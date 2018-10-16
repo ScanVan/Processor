@@ -29,7 +29,7 @@ public:
 
 	void push(T& value) {
 		std::lock_guard<std::mutex> lg{m};
-		queue.push(std::make_shared<T>(value));
+		queue.push(std::make_shared<T>(std::move(value)));
 		cv.notify_one();
 	}
 
