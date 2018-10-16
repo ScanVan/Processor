@@ -40,6 +40,106 @@ public:
 	PairImages & operator= (PairImages &p) { imgNum = p.imgNum; std::stringstream ss{}; ss << "Image pair " << imgNum << " copied." << std::endl; print(ss.str()); return *this;};
 };
 
+class PairListPoints {
+	int idx1 = 0;
+	int idx2 = 1;
+public:
+	PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points constructed." << std::endl; print(ss.str()); };
+	PairListPoints(int n1, int n2) : idx1 {n1}, idx2{n2} { std::stringstream ss{}; ss << "-->Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
+	PairListPoints(PairListPoints &n) { idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Copy constructor. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
+	PairListPoints(PairListPoints &&n) { idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Move constructor. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
+	void setListIdx (int a, int b) { idx1 = a; idx2 = b; }
+	int getListIdx1 () const { return idx1; }
+	int getListIdx2 () const { return idx2; }
+	PairListPoints & operator=(const PairListPoints &n) {idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Assignment operator. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); return *this;};
+	~PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points " << idx1 << ", " << idx2 << " destructed." << std::endl; print(ss.str()); };
+};
+
+class Triplets {
+	int idx1 = 0;
+	int idx2 = 1;
+	int idx3 = 2;
+	// List of points
+public:
+	Triplets() { std::stringstream ss{}; ss << "-->Triplets constructed." << std::endl; print(ss.str()); };
+	Triplets(int n1, int n2, int n3) : idx1 {n1}, idx2{n2}, idx3{n3} { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
+	Triplets(Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Copy constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
+	Triplets(Triplets &&n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Move constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
+	void setListIdx (int a, int b, int c) { idx1 = a; idx2 = b; idx3 = c;}
+	int getListIdx1 () const { return idx1; }
+	int getListIdx2 () const { return idx2; }
+	int getListIdx3 () const { return idx3; }
+	Triplets & operator= (Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Assignment operator. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); return *this;};
+	~Triplets() { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " destructed." << std::endl; print(ss.str()); };
+};
+
+class TripletsImages {
+	int idx1 = 0;
+	int idx2 = 1;
+	int idx3 = 2;
+	std::shared_ptr<PairImages> img1 {};
+	std::shared_ptr<PairImages> img2 {};
+	std::shared_ptr<PairImages> img3 {};
+	// List of points
+public:
+	TripletsImages() { std::stringstream ss{}; ss << "-->TripletsImages constructed." << std::endl; print(ss.str()); };
+	TripletsImages(int n1, int n2, int n3, std::shared_ptr<PairImages> im1, std::shared_ptr<PairImages> im2, std::shared_ptr<PairImages> im3) :
+			idx1 { n1 }, idx2 { n2 }, idx3 { n3 }, img1 {im1}, img2 {im2}, img3 {im3}  {
+		std::stringstream ss { };
+		ss << "-->TripletsImages " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+	TripletsImages(TripletsImages &n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		img1 = n.img1;
+		img2 = n.img2;
+		img3 = n.img3;
+		std::stringstream ss { };
+		ss << "-->Copy constructor. TripletsImages " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+	TripletsImages(TripletsImages &&n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		img1 = n.img1;
+		img2 = n.img2;
+		img3 = n.img3;
+		std::stringstream ss { };
+		ss << "-->Move constructor. TripletsImages " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+	void setListIdx (int a, int b, int c) { idx1 = a; idx2 = b; idx3 = c;}
+	void setSharedPtr(std::shared_ptr<PairImages> a, std::shared_ptr<PairImages> b, std::shared_ptr<PairImages> c) {
+		img1 = a;
+		img2 = b;
+		img3 = c;
+	}
+	int getListIdx1 () const { return idx1; }
+	int getListIdx2 () const { return idx2; }
+	int getListIdx3 () const { return idx3; }
+	TripletsImages & operator=(TripletsImages &n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		img1 = n.img1;
+		img2 = n.img2;
+		img3 = n.img3;
+		std::stringstream ss { };
+		ss << "-->Assignment operator. TripletsImages " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+		return *this;
+	}
+	~TripletsImages() {
+		std::stringstream ss { };
+		ss << "-->TripletsImages " << idx1 << ", " << idx2 << ", " << idx3 << " destructed." << std::endl;
+		print(ss.str());
+	}
+
+};
+
 void GeneratePairImages () {
 
 	int i {0};
@@ -55,17 +155,36 @@ void GeneratePairImages () {
 	}
 }
 
-void FeatureExtraction (std::shared_ptr<PairImages> im1, std::shared_ptr<PairImages> im2) {
+PairListPoints FeatureExtraction (std::shared_ptr<PairImages> im1, std::shared_ptr<PairImages> im2) {
 
 	std::stringstream ss {};
 	ss << "=========================" << std::endl << "Feature Extraction " << im1->getImgNum() << " - "  << im2->getImgNum() << std::endl << "=========================" << std::endl;
 	print (ss.str());
 
+	PairListPoints p1 { im1->getImgNum(), im2->getImgNum() };
+	return p1;
+}
+
+Triplets CommonPointsComputation (PairListPoints &p1, PairListPoints &p2) {
+
+	std::stringstream ss {};
+	ss << "=========================" << std::endl << "Common Points Computation (" << p1.getListIdx1() << " - "  << p1.getListIdx2() << ") (" << p2.getListIdx1() << " - " << p2.getListIdx2() << ")" <<  std::endl << "=========================" << std::endl;
+	print (ss.str());
+
+	if (p1.getListIdx2() != p2.getListIdx1()) {
+		throw std::runtime_error ("Error in indexes in CommonPointComputation");
+	}
+
+	Triplets t1 { p1.getListIdx1(), p1.getListIdx2(), p2.getListIdx2()};
+
+	return t1;
 }
 
 void DispatchPairImages() {
 
 	std::vector<std::shared_ptr<PairImages>> v{};
+	std::vector<std::shared_ptr<PairImages>> ims{};
+	std::vector<PairListPoints> lp{};
 
 	for (;;) {
 		std::shared_ptr<PairImages> receivedPairImages { };
@@ -74,12 +193,24 @@ void DispatchPairImages() {
 		ss << "=========================" << std::endl << "Received pair images " << receivedPairImages->getImgNum() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 
-
 		v.push_back(receivedPairImages);
-		if (v.size()==2) {
-			FeatureExtraction (v[0], v[1]);
+		ims.push_back(receivedPairImages);
+
+		if (v.size() == 2) {
+			lp.push_back(FeatureExtraction (v[0], v[1]));
 			v[0]=v[1];
 			v.pop_back();
+		}
+
+		if (lp.size() == 2) {
+			Triplets p1 {CommonPointsComputation (lp[0], lp[1])};
+			lp[0] = lp[1];
+			lp.pop_back();
+			TripletsImages ti { p1.getListIdx1(), p1.getListIdx2(), p1.getListIdx3(), ims[0], ims[1], ims[2] };
+			for (auto x:)
+
+
+
 		}
 
 	}
