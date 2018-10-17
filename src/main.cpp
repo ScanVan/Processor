@@ -306,21 +306,18 @@ Model PoseEstimation (Triplets &t1) {
 }
 
 
-Model FusionModel (Model &m1, Model &m2) {
+void FusionModel (Model &m1, Model *m) {
 	std::stringstream ss { };
-	ss << "=========================" << std::endl << "Fusion Model (" << m1.getListIdx1() << " - " << m1.getListIdx2() << " - " << m1.getListIdx3() << ") ("
-			<< m2.getListIdx1() << " - " << m2.getListIdx2() << " - " << m2.getListIdx3() << ") " << std::endl
+	ss << "=========================" << std::endl << "Fusion Model (" << m1.getListIdx1() << " - " << m1.getListIdx2() << " - " << m1.getListIdx3() << ")"
+			<< std::endl
 			<< "=========================" << std::endl;
 	print(ss.str());
-
-	Model m3 {};
-	return m3;
 }
 
 void ProcPose() {
 
 	std::vector <Model> vecm {};
-	Model m;
+	Model m {};
 
 
 	for (;;) {
@@ -333,7 +330,7 @@ void ProcPose() {
 		Triplets t1 {receivedTripletsImages->getListIdx1(), receivedTripletsImages->getListIdx2(), receivedTripletsImages->getListIdx3()};
 		Model m1 {PoseEstimation (t1)};
 
-		m = FusionModel (m1, m);
+		FusionModel (m1, &m);
 	}
 }
 
