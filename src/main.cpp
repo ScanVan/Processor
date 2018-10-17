@@ -17,8 +17,10 @@
 using namespace std;
 
 class PairImages;
+class TripletsImages;
 
 ScanVan::thread_safe_queue<PairImages> imgProcQueue {};
+ScanVan::thread_safe_queue<TripletsImages> tripletsProcQueue {};
 ctpl::thread_pool p(4 /* two threads in the pool */);
 std::mutex mtx{};
 
@@ -140,6 +142,83 @@ public:
 
 };
 
+class Model {
+	// change to a list of indices
+	int idx1 = 0;
+	int idx2 = 1;
+	int idx3 = 2;
+	// List of points for models
+public:
+	Model() {
+		std::stringstream ss { };
+		ss << "-->Model constructed." << std::endl;
+		print(ss.str());
+	}
+	Model(int n1, int n2, int n3) :
+			idx1 { n1 }, idx2 { n2 }, idx3 { n3 } {
+		std::stringstream ss { };
+		ss << "-->Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+	Model(Model &n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		std::stringstream ss { };
+		ss << "-->Copy constructor. Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+	Model(Model &&n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		std::stringstream ss { };
+		ss << "-->Move constructor. Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+	}
+
+	void setListIdx(int a, int b, int c) {
+		idx1 = a;
+		idx2 = b;
+		idx3 = c;
+	}
+	int getListIdx1() const {
+		return idx1;
+	}
+	int getListIdx2() const {
+		return idx2;
+	}
+	int getListIdx3() const {
+		return idx3;
+	}
+	Model & operator=(Model &n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		std::stringstream ss { };
+		ss << "-->Assignment operator. Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+		return *this;
+	}
+	Model & operator=(Model &&n) {
+		idx1 = n.idx1;
+		idx2 = n.idx2;
+		idx3 = n.idx3;
+		std::stringstream ss { };
+		ss << "-->Move assignment operator. Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
+		print(ss.str());
+		return *this;
+	}
+
+	~Model() {
+		std::stringstream ss { };
+		ss << "-->Model " << idx1 << ", " << idx2 << ", " << idx3 << " destructed." << std::endl;
+		print(ss.str());
+	}
+};
+
+//=========================================================================================================
+
 void GeneratePairImages () {
 
 	int i {0};
@@ -180,7 +259,7 @@ Triplets CommonPointsComputation (PairListPoints &p1, PairListPoints &p2) {
 	return t1;
 }
 
-void DispatchPairImages() {
+void ProcFeatures() {
 
 	std::vector<std::shared_ptr<PairImages>> v{};
 	std::vector<std::shared_ptr<PairImages>> ims{};
@@ -207,12 +286,54 @@ void DispatchPairImages() {
 			lp[0] = lp[1];
 			lp.pop_back();
 			TripletsImages ti { p1.getListIdx1(), p1.getListIdx2(), p1.getListIdx3(), ims[0], ims[1], ims[2] };
-			for (auto x:)
-
-
-
+			for (auto it = ims.begin(); it!= ims.end()-1; ++it) {
+				*it = *(it+1);
+			}
+			ims.pop_back();
+			tripletsProcQueue.push(ti);
 		}
+	}
+}
 
+Model PoseEstimation (Triplets &t1) {
+	std::stringstream ss { };
+	ss << "=========================" << std::endl << "Pose Estimation with triplets" << t1.getListIdx1() << " - " << t1.getListIdx2() << " - " << t1.getListIdx3() << std::endl
+			<< "=========================" << std::endl;
+	print(ss.str());
+
+	Model m1 { t1.getListIdx1(), t1.getListIdx2(), t1.getListIdx3() };
+	return m1;
+}
+
+
+Model FusionModel (Model &m1, Model &m2) {
+	std::stringstream ss { };
+	ss << "=========================" << std::endl << "Fusion Model (" << m1.getListIdx1() << " - " << m1.getListIdx2() << " - " << m1.getListIdx3() << ") ("
+			<< m2.getListIdx1() << " - " << m2.getListIdx2() << " - " << m2.getListIdx3() << ") " << std::endl
+			<< "=========================" << std::endl;
+	print(ss.str());
+
+	Model m3 {};
+	return m3;
+}
+
+void ProcPose() {
+
+	std::vector <Model> vecm {};
+	Model m;
+
+
+	for (;;) {
+		std::shared_ptr<TripletsImages> receivedTripletsImages { };
+		receivedTripletsImages = tripletsProcQueue.wait_pop();
+		std::stringstream ss {};
+		ss << "=========================" << std::endl << "Received triplets images " << receivedTripletsImages->getListIdx1() << ", " << receivedTripletsImages->getListIdx2() << ", " << receivedTripletsImages->getListIdx3() << std::endl << "=========================" << std::endl;
+		print (ss.str());
+
+		Triplets t1 {receivedTripletsImages->getListIdx1(), receivedTripletsImages->getListIdx2(), receivedTripletsImages->getListIdx3()};
+		Model m1 {PoseEstimation (t1)};
+
+		m = FusionModel (m1, m);
 	}
 }
 
@@ -221,10 +342,12 @@ int main() {
 
 
 	std::thread GenPairs (GeneratePairImages);
-	std::thread DispatchPairs (DispatchPairImages);
+	std::thread ProcessFeatureExtraction (ProcFeatures);
+	std::thread ProcessPoseEstimation (ProcPose);
 
 	GenPairs.join();
-	DispatchPairs.join();
+	ProcessFeatureExtraction.join();
+	ProcessPoseEstimation.join();
 
 	return 0;
 
