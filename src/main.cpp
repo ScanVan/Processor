@@ -149,13 +149,14 @@ public:
 
 typedef Vec<uint8_t, 3> RGB888;
 
-class Feature3D{
+class ModelFeature{
 public:
 	Point3f position;
 	RGB888 color;
 };
 
-class Capture3D{
+//Represent
+class ModelKeypoint{
 public:
 	Point3f position;
 	//...
@@ -171,8 +172,8 @@ class Model {
 	// List of points for models
 
 public:
-	vector<Capture3D> captures;
-	vector<Feature3D> features;
+	vector<ModelKeypoint> keypoints;
+	vector<ModelFeature> features;
 
 
 	Model() {
@@ -339,14 +340,14 @@ void FusionModel (Model *m1, Model *m2) {
 			<< "=========================" << std::endl;
 	print(ss.str());
 
-	assert(m1->captures.size() >= 3);
-	assert(m2->captures.size() == 3);
-	auto m1CapturesSize = m1->captures.size();
-	auto m1C1 = m1->captures[m1CapturesSize-2].position;
-	auto m1C2 = m1->captures[m1CapturesSize-1].position;
-	auto m2C1 = m2->captures[0].position;
-	auto m2C2 = m2->captures[1].position;
-	auto m2C3 = m2->captures[2].position;
+	assert(m1->keypoints.size() >= 3);
+	assert(m2->keypoints.size() == 3);
+	auto m1CapturesSize = m1->keypoints.size();
+	auto m1C1 = m1->keypoints[m1CapturesSize-2].position;
+	auto m1C2 = m1->keypoints[m1CapturesSize-1].position;
+	auto m2C1 = m2->keypoints[0].position;
+	auto m2C2 = m2->keypoints[1].position;
+	auto m2C3 = m2->keypoints[2].position;
 	auto scaleFactor = norm(m1C2-m1C1)/norm(m2C2-m2C1);
 	auto t1 =(m2C1-m1C1)/norm(m2C1-m1C1);
 	auto t2 =(m2C2-m2C1)/norm(m2C2-m2C1);
@@ -357,14 +358,14 @@ void FusionModel (Model *m1, Model *m2) {
 	auto translation = m1C1-m1C2;
 
 	for(auto source : m2->features){
-		auto feature = Feature3D();
+		auto feature = ModelFeature();
 		feature.color = source.color;
 		feature.position = translation + scaleFactor * (rotation * source.position);
 		m1->features.push_back(feature);
 	}
-	Capture3D m1C3;
+	ModelKeypoint m1C3;
 	m1C3.position = translation + scaleFactor * (rotation * m2C3);
-	m1->captures.push_back(m1C3);
+	m1->keypoints.push_back(m1C3);
 
 //# model = [positions,sv_scene] output form the main iterative algorithm
 //pos_1=model_1[0]
