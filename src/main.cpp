@@ -10,11 +10,14 @@
 #include <thread>
 #include <mutex>
 #include <sstream>
+#include <opencv4/opencv2/core/types.hpp>
+#include <opencv4/opencv2/core.hpp>
 
 #include "ctpl.hpp"
 #include "Queue.hpp"
 
 using namespace std;
+using namespace cv;
 
 class PairImages;
 class TripletsImages;
@@ -142,13 +145,36 @@ public:
 
 };
 
+
+
+typedef Vec<uint8_t, 3> RGB888;
+
+class Feature3D{
+public:
+	Point3f position;
+	RGB888 color;
+};
+
+class Capture3D{
+public:
+	Point3f position;
+	//...
+};
+
+
+
 class Model {
 	// change to a list of indices
 	int idx1 = 0;
 	int idx2 = 1;
 	int idx3 = 2;
 	// List of points for models
+
 public:
+	vector<Capture3D> captures;
+	vector<Feature3D> features;
+
+
 	Model() {
 		std::stringstream ss { };
 		ss << "-->Model constructed." << std::endl;
@@ -306,12 +332,75 @@ Model PoseEstimation (Triplets &t1) {
 }
 
 
-void FusionModel (Model &m1, Model *m) {
+void FusionModel (Model *m1, Model *m2) {
 	std::stringstream ss { };
-	ss << "=========================" << std::endl << "Fusion Model (" << m1.getListIdx1() << " - " << m1.getListIdx2() << " - " << m1.getListIdx3() << ")"
+	ss << "=========================" << std::endl << "Fusion Model (" << m1->getListIdx1() << " - " << m1->getListIdx2() << " - " << m1->getListIdx3() << ")"
 			<< std::endl
 			<< "=========================" << std::endl;
 	print(ss.str());
+
+	assert(m1->captures.size() >= 3);
+	assert(m2->captures.size() == 3);
+	auto m1CapturesSize = m1->captures.size();
+	auto m1C1 = m1->captures[m1CapturesSize-2].position;
+	auto m1C2 = m1->captures[m1CapturesSize-1].position;
+	auto m2C1 = m2->captures[0].position;
+	auto m2C2 = m2->captures[1].position;
+	auto m2C3 = m2->captures[2].position;
+	auto scaleFactor = norm(m1C2-m1C1)/norm(m2C2-m2C1);
+	auto t1 =(m2C1-m1C1)/norm(m2C1-m1C1);
+	auto t2 =(m2C2-m2C1)/norm(m2C2-m2C1);
+	auto v = t1.cross(t2);
+	auto c = t1.dot(t2);
+	auto w = Matx33f(0.0,-v.z,v.y,v.z,0.0,-v.x,-v.y,v.x,0.0);
+	auto rotation = Matx33f().eye() + (w.dot(w)/(1+c)) * w;
+	auto translation = m1C1-m1C2;
+
+	for(auto source : m2->features){
+		auto feature = Feature3D();
+		feature.color = source.color;
+		feature.position = translation + scaleFactor * (rotation * source.position);
+		m1->features.push_back(feature);
+	}
+	Capture3D m1C3;
+	m1C3.position = translation + scaleFactor * (rotation * m2C3);
+	m1->captures.push_back(m1C3);
+
+//# model = [positions,sv_scene] output form the main iterative algorithm
+//pos_1=model_1[0]
+//scene_1=model_1[1]
+//pos_2=model_2[0]
+//scene_2=model_2[1]
+//#position used for aligment
+//pos_a_1=np.asarray(pos_1[-2])
+//pos_b_1=np.asarray(pos_1[-1])
+//pos_a_2=np.asarray(pos_2[0])
+//pos_b_2=np.asarray(pos_2[1])
+//#position to add (after aligment)
+//pos_c=np.asarray(pos_2[2])
+//#scale factor calculus
+//scale_factor=np.linalg.norm(pos_b_1-pos_a_1)/np.linalg.norm(pos_b_2-pos_a_2)
+//#rotation calculus
+//t1=(pos_b_1-pos_a_1)/np.linalg.norm(pos_b_1-pos_a_1)
+//t2=(pos_b_2-pos_a_2)/np.linalg.norm(pos_b_2-pos_a_2)
+//v=np.cross(t1,t2)
+//c=np.dot(t1,t2)
+//w=np.matrix([[0.0,-v[2],v[1]],[v[2],0.0,-v[0]],[-v[1],v[0],0.0]])
+//rotation=np.identity(3)+w+np.dot(w,w)/(1+c)
+//#translation calculus
+//translation=pos_a_1-pos_a_2
+//#new scene with point form both models
+//scene=[]
+//for i in range(len(scene_1)):
+//    point=tuple(np.squeeze(np.asarray(scene_1[i])))
+//    scene.append(point)
+//for i in range(len(scene_2)):
+//    point=tuple(np.squeeze(np.asarray(translation+scale_factor*np.dot(scene_2[i],rotation))))
+//    scene.append(point)
+//# new positions array
+//positions=pos_1+[np.squeeze(np.asarray(translation+scale_factor*np.dot(pos_c,rotation)))]
+//model=[positions,scene]
+
 }
 
 void ProcPose() {
@@ -330,7 +419,7 @@ void ProcPose() {
 		Triplets t1 {receivedTripletsImages->getListIdx1(), receivedTripletsImages->getListIdx2(), receivedTripletsImages->getListIdx3()};
 		Model m1 {PoseEstimation (t1)};
 
-		FusionModel (m1, &m);
+		FusionModel (&m1, &m);
 	}
 }
 
