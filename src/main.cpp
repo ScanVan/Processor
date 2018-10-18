@@ -10,6 +10,9 @@
 #include <thread>
 #include <mutex>
 #include <sstream>
+#include <iostream>
+#include <fstream>
+#include <iterator>
 #include <opencv4/opencv2/core/types.hpp>
 #include <opencv4/opencv2/core.hpp>
 
@@ -146,6 +149,27 @@ public:
 };
 
 
+
+void writePly(string file, vector<Point3f> points){
+	ofstream f;
+	f.open (file);
+
+	f << "ply" << endl;
+	f << "format ascii 1.0 " << endl;
+	f << "element vertex 8   " << endl;
+	f << "property float32 x " << endl;
+	f << "property float32 y " << endl;
+	f << "property float32 z " << endl;
+	f << "element face " << points.size() << endl;
+	f << "property list uint8 int32 vertex_index { vertex_indices is a list of ints }" << endl;
+	f << "end_header " << endl;
+
+	for(auto p : points){
+		f << p.x << " " << p.y << " " << p.z << endl;
+	}
+
+	f.close();
+}
 
 typedef Vec<uint8_t, 3> RGB888;
 
