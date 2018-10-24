@@ -150,41 +150,68 @@ public:
 
 
 
-void writePly(string file, vector<Point3f> points){
-	ofstream f;
-	f.open (file);
-
-	f << "ply" << endl;
-	f << "format ascii 1.0 " << endl;
-	f << "element vertex 8   " << endl;
-	f << "property float32 x " << endl;
-	f << "property float32 y " << endl;
-	f << "property float32 z " << endl;
-	f << "element face " << points.size() << endl;
-	f << "property list uint8 int32 vertex_index { vertex_indices is a list of ints }" << endl;
-	f << "end_header " << endl;
-
-	for(auto p : points){
-		f << p.x << " " << p.y << " " << p.z << endl;
-	}
-
-	f.close();
-}
 
 typedef Vec<uint8_t, 3> RGB888;
 
 class ModelFeature{
 public:
-	Point3f position;
+	Matx13f position;
 	RGB888 color;
+	ModelFeature(){}
+	ModelFeature(Matx13f position) : position(position){}
+	ModelFeature(Matx13f position, RGB888 color) : position(position), color(color){}
 };
 
 //Represent
 class ModelKeypoint{
 public:
-	Point3f position;
+	Matx13f position;
 	//...
+
+	ModelKeypoint(){}
+	ModelKeypoint(Matx13f position) : position(position){}
 };
+
+
+
+//void writePly(string file, vector<Matx13f> points){
+void writePly(string file, vector<ModelFeature> features){
+//	‘__gnu_cxx::__normal_iterator<ModelKeypoint*, std::vector<ModelKeypoint> >
+	ofstream s;
+	s.open (file);
+
+	s << "ply" << endl;
+	s << "format ascii 1.0 " << endl;
+	s << "element vertex " << features.size() << endl;
+	s << "property float32 x " << endl;
+	s << "property float32 y " << endl;
+	s << "property float32 z " << endl;
+	s << "property uchar red" << endl;
+	s << "property uchar green " << endl;
+	s << "property uchar blue " << endl;
+	s << "element face 0 " << endl;
+	s << "property list uint8 int32 vertex_index { vertex_indices is a list of ints }" << endl;
+	s << "end_header " << endl;
+
+	for(auto f : features){
+		s << f.position(0) << " " << f.position(1) << " " << f.position(2) << " " <<  (uint16_t)f.color(0) << " " << (uint16_t)f.color(1) << " " << (uint16_t)f.color(2) << endl;
+	}
+
+	s.close();
+}
+
+/*
+vector<Matx13f> featuresToPoints(vector<ModelFeature> *features){
+	vector<Matx13f> ret;
+	for(f : *features) ret.push_back(f.position);
+	return ret;
+}*/
+
+vector<ModelFeature> keypointsToFeatures(vector<ModelKeypoint> *keypoints){
+	vector<ModelFeature> ret;
+	for(k : *keypoints) ret.push_back(ModelFeature(k.position, RGB888(0,255,0)));
+	return ret;
+}
 
 
 
@@ -198,6 +225,7 @@ class Model {
 public:
 	vector<ModelKeypoint> keypoints;
 	vector<ModelFeature> features;
+
 
 
 	Model() {
@@ -227,6 +255,7 @@ public:
 		ss << "-->Move constructor. Model " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl;
 		print(ss.str());
 	}
+
 
 	void setListIdx(int a, int b, int c) {
 		idx1 = a;
@@ -357,6 +386,11 @@ Model PoseEstimation (Triplets &t1) {
 }
 
 
+Matx13f cross(Matx13f a, Matx13f b){
+	auto c = Point3f(a(0), a(1), a(2)).cross(Point3f(b(0), b(1), b(2)));
+	return Matx13f(c.x,c.y,c.z);
+}
+
 void FusionModel (Model *m1, Model *m2) {
 	std::stringstream ss { };
 	ss << "=========================" << std::endl << "Fusion Model (" << m1->getListIdx1() << " - " << m1->getListIdx2() << " - " << m1->getListIdx3() << ")"
@@ -373,59 +407,23 @@ void FusionModel (Model *m1, Model *m2) {
 	auto m2C2 = m2->keypoints[1].position;
 	auto m2C3 = m2->keypoints[2].position;
 	auto scaleFactor = norm(m1C2-m1C1)/norm(m2C2-m2C1);
-	auto t1 =(m2C1-m1C1)/norm(m2C1-m1C1);
-	auto t2 =(m2C2-m2C1)/norm(m2C2-m2C1);
-	auto v = t1.cross(t2);
+	auto t1 = (1/norm(m1C2-m1C1)) * (m1C2-m1C1);
+	auto t2 = (1/norm(m2C2-m2C1)) * (m2C2-m2C1);
+	auto v = cross(t1,t2);
 	auto c = t1.dot(t2);
-	auto w = Matx33f(0.0,-v.z,v.y,v.z,0.0,-v.x,-v.y,v.x,0.0);
-	auto rotation = Matx33f().eye() + (w.dot(w)/(1+c)) * w;
-	auto translation = m1C1-m1C2;
+	auto w = Matx33f(0.0,-v(2),v(1),v(2),0.0,-v(0),-v(1),v(0),0.0);
+	auto rotation = Matx33f().eye() + w + (1/(1+c))*(w*w);
+	auto translation = m1C1-m2C1;
 
 	for(auto source : m2->features){
 		auto feature = ModelFeature();
 		feature.color = source.color;
-		feature.position = translation + scaleFactor * (rotation * source.position);
+		feature.position = translation + scaleFactor * (source.position* rotation);
 		m1->features.push_back(feature);
 	}
 	ModelKeypoint m1C3;
-	m1C3.position = translation + scaleFactor * (rotation * m2C3);
+	m1C3.position = translation + scaleFactor * (m2C3*rotation);
 	m1->keypoints.push_back(m1C3);
-
-//# model = [positions,sv_scene] output form the main iterative algorithm
-//pos_1=model_1[0]
-//scene_1=model_1[1]
-//pos_2=model_2[0]
-//scene_2=model_2[1]
-//#position used for aligment
-//pos_a_1=np.asarray(pos_1[-2])
-//pos_b_1=np.asarray(pos_1[-1])
-//pos_a_2=np.asarray(pos_2[0])
-//pos_b_2=np.asarray(pos_2[1])
-//#position to add (after aligment)
-//pos_c=np.asarray(pos_2[2])
-//#scale factor calculus
-//scale_factor=np.linalg.norm(pos_b_1-pos_a_1)/np.linalg.norm(pos_b_2-pos_a_2)
-//#rotation calculus
-//t1=(pos_b_1-pos_a_1)/np.linalg.norm(pos_b_1-pos_a_1)
-//t2=(pos_b_2-pos_a_2)/np.linalg.norm(pos_b_2-pos_a_2)
-//v=np.cross(t1,t2)
-//c=np.dot(t1,t2)
-//w=np.matrix([[0.0,-v[2],v[1]],[v[2],0.0,-v[0]],[-v[1],v[0],0.0]])
-//rotation=np.identity(3)+w+np.dot(w,w)/(1+c)
-//#translation calculus
-//translation=pos_a_1-pos_a_2
-//#new scene with point form both models
-//scene=[]
-//for i in range(len(scene_1)):
-//    point=tuple(np.squeeze(np.asarray(scene_1[i])))
-//    scene.append(point)
-//for i in range(len(scene_2)):
-//    point=tuple(np.squeeze(np.asarray(translation+scale_factor*np.dot(scene_2[i],rotation))))
-//    scene.append(point)
-//# new positions array
-//positions=pos_1+[np.squeeze(np.asarray(translation+scale_factor*np.dot(pos_c,rotation)))]
-//model=[positions,scene]
-
 }
 
 void ProcPose() {
@@ -463,3 +461,57 @@ int main() {
 	return 0;
 
 }
+
+
+#include <iostream>
+#include <fstream>
+void testModelFusion(){
+	vector<Matx13f> chopper;
+	 std::fstream myfile("/home/scanvan/scanvan/ply/chopper.cp", std::ios_base::in);
+
+	float x,y,z;
+	while (myfile >> x >> y >> z)
+	{
+		chopper.push_back(Matx13f(x,y,z));
+	}
+
+	Model mainModel;
+	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(100,0,0)));
+	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(200,0,0)));
+	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(300,0,0)));
+	for(auto p : chopper)mainModel.features.push_back(ModelFeature(p));
+
+	for(int i = 0;i < 10;i ++){
+		Model triplet;
+		triplet.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+		triplet.keypoints.push_back(ModelKeypoint(Matx13f(100 - i*2,10,5)));
+		triplet.keypoints.push_back(ModelKeypoint(Matx13f(200,30,i*10)));
+
+		for(auto p : chopper)triplet.features.push_back(ModelFeature(p, RGB888(255,0, 25*i)));
+		FusionModel(&mainModel, &triplet);
+
+	}
+	writePly("keypoints.ply",  keypointsToFeatures(&mainModel.keypoints));
+	writePly("features.ply",  mainModel.features);
+
+
+	//	Model mainModel;
+	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(10,1,9)));
+	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(16,7,4)));
+	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(22,11,5)));
+	//
+	//	Model triplet;
+	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(2,7,5)));
+	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(1,8,4)));
+	//	pos_1 = [[0,0,0],[10,1,9],[20,7,4],[30,11,5]]
+	//	pos_2 = [[0,0,0],[2,7,5],[20,20,0]]
+
+}
+
+
+
+
+
