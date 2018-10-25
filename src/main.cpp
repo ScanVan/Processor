@@ -13,11 +13,17 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
+#include <vector>
 #include <opencv4/opencv2/core/types.hpp>
 #include <opencv4/opencv2/core.hpp>
+#include <opencv4/opencv2/features2d.hpp>
+#include <opencv4/opencv2/imgcodecs.hpp>
+#include <opencv4/opencv2/opencv.hpp>
 
 #include "ctpl.hpp"
 #include "Queue.hpp"
+
+
 
 using namespace std;
 using namespace cv;
@@ -35,9 +41,19 @@ void print (std::string st) {
 	std::cout << st;
 }
 
+class SimpleImage{
+public:
+
+
+};
+
 class PairImages {
 	int imgNum = 0;
 public:
+	Mat img;
+    vector<KeyPoint> kpts;
+    Mat desc;
+
 	PairImages() { std::stringstream ss{}; ss << "-->Image pair constructed." << std::endl; print(ss.str()); };
 	PairImages(PairImages &n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Copy constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
 	PairImages(PairImages &&n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Move constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
@@ -52,6 +68,8 @@ class PairListPoints {
 	int idx1 = 0;
 	int idx2 = 1;
 public:
+    vector<DMatch> matches;
+
 	PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points constructed." << std::endl; print(ss.str()); };
 	PairListPoints(int n1, int n2) : idx1 {n1}, idx2{n2} { std::stringstream ss{}; ss << "-->Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
 	PairListPoints(PairListPoints &n) { idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Copy constructor. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
@@ -69,6 +87,9 @@ class Triplets {
 	int idx3 = 2;
 	// List of points
 public:
+
+	vector<vector<int>> matches;
+
 	Triplets() { std::stringstream ss{}; ss << "-->Triplets constructed." << std::endl; print(ss.str()); };
 	Triplets(int n1, int n2, int n3) : idx1 {n1}, idx2{n2}, idx3{n3} { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
 	Triplets(Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Copy constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
@@ -321,6 +342,23 @@ PairListPoints FeatureExtraction (std::shared_ptr<PairImages> im1, std::shared_p
 	print (ss.str());
 
 	PairListPoints p1 { im1->getImgNum(), im2->getImgNum() };
+
+    BFMatcher matcher(NORM_HAMMING);
+    vector< vector<DMatch> > nn_matches;
+    matcher.knnMatch(im1->desc, im2->desc, nn_matches, 2);
+
+	const float nn_match_ratio = 0.8f;   // Nearest neighbor matching ratio
+    for(auto matches : nn_matches) {
+        DMatch first = matches[0];
+        float dist1 = matches[0].distance;
+        float dist2 = matches[1].distance;
+
+        if(dist1 < nn_match_ratio * dist2) {
+            p1.matches.push_back(matches[0]);
+        }
+    }
+
+
 	return p1;
 }
 
@@ -335,6 +373,36 @@ Triplets CommonPointsComputation (PairListPoints &p1, PairListPoints &p2) {
 	}
 
 	Triplets t1 { p1.getListIdx1(), p1.getListIdx2(), p2.getListIdx2()};
+
+	const int pairsCount = 2;
+	PairListPoints *p[pairsCount];
+	p[0] = &p1;
+	p[1] = &p2;
+
+
+	for(int p0MatchId = 1;p0MatchId < p[0]->matches.size();p0MatchId++){
+		bool ok = true;
+		int matchIds[pairsCount];
+		int nextQueryIdx = p[0]->matches[p0MatchId].trainIdx;
+
+		matchIds[0] = p0MatchId;
+		for(int pxId = 1;pxId < pairsCount;pxId++){
+			PairListPoints *px = p[pxId];
+			ok = false;
+			for(int pxMatchId = 1;pxMatchId < px->matches.size();pxMatchId++){
+				if(px->matches[pxMatchId].queryIdx == nextQueryIdx){
+					nextQueryIdx = px->matches[pxMatchId].trainIdx;
+					matchIds[pxId] = pxMatchId;
+					ok = true;
+					break;
+				}
+			}
+			if(!ok) break;
+		}
+		if(ok){
+			t1.matches.push_back(vector<int>(matchIds, matchIds + pairsCount));
+		}
+	}
 
 	return t1;
 }
