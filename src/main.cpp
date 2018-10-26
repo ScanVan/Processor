@@ -28,11 +28,11 @@
 using namespace std;
 using namespace cv;
 
-class PairImages;
-class TripletsImages;
+class Omni;
+class TripletsWithMatches;
 
-ScanVan::thread_safe_queue<PairImages> imgProcQueue {};
-ScanVan::thread_safe_queue<TripletsImages> tripletsProcQueue {};
+ScanVan::thread_safe_queue<Omni> imgProcQueue {};
+ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 ctpl::thread_pool p(4 /* two threads in the pool */);
 std::mutex mtx{};
 
@@ -41,67 +41,70 @@ void print (std::string st) {
 	std::cout << st;
 }
 
-class SimpleImage{
-public:
-
-
-};
-
-class PairImages {
-	int imgNum = 0;
+class Omni{
 public:
 	Mat img;
-    vector<KeyPoint> kpts;
+	int imgNum = 0;
+
+	Omni(int imgNum) : imgNum(imgNum){}
+	// ... timestamp, ...
+
+
+	int getImgNum(){ return imgNum;}
+};
+
+//Omnidirectional image, img is composed by the two camera pictures
+class OmniWithFeatures {
+public:
+	shared_ptr<Omni> omni;
+    vector<KeyPoint> kpts; //Keypoints extracted from img.
     Mat desc;
 
-	PairImages() { std::stringstream ss{}; ss << "-->Image pair constructed." << std::endl; print(ss.str()); };
-	PairImages(PairImages &n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Copy constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
-	PairImages(PairImages &&n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Move constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
-	PairImages(int &n) { imgNum = n; std::stringstream ss{}; ss << "-->Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
-	void setImgNum (int n) { imgNum = n; }
-	int getImgNum() const { return imgNum; }
-	~PairImages() {  std::stringstream ss{}; ss << "-->Image pair " << imgNum << " destructed." << std::endl; print(ss.str()); };
-	PairImages & operator= (PairImages &p) { imgNum = p.imgNum; std::stringstream ss{}; ss << "Image pair " << imgNum << " copied." << std::endl; print(ss.str()); return *this;};
+	OmniWithFeatures(shared_ptr<Omni> omni) : omni(omni) { std::stringstream ss{}; ss << "-->Image pair constructed." << std::endl; print(ss.str()); };
+//	OmniWithFeatures(OmniWithFeatures &n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Copy constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
+//	OmniWithFeatures(OmniWithFeatures &&n) { imgNum = n.imgNum; std::stringstream ss{}; ss << "-->Move constructor. Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
+//	OmniWithFeatures(int &n) { imgNum = n; std::stringstream ss{}; ss << "-->Image pair " << imgNum << " constructed." << std::endl; print(ss.str()); };
+//	void setImgNum (int n) { imgNum = n; }
+	int getImgNum() const { return omni->imgNum; }
+//	~OmniWithFeatures() {  std::stringstream ss{}; ss << "-->Image pair " << imgNum << " destructed." << std::endl; print(ss.str()); };
+//	OmniWithFeatures & operator= (OmniWithFeatures &p) { imgNum = p.imgNum; std::stringstream ss{}; ss << "Image pair " << imgNum << " copied." << std::endl; print(ss.str()); return *this;};
 };
 
-class PairListPoints {
-	int idx1 = 0;
-	int idx2 = 1;
+class PairWithMatches {
 public:
     vector<DMatch> matches;
+    std::shared_ptr<OmniWithFeatures> imgs[2];
 
-	PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points constructed." << std::endl; print(ss.str()); };
-	PairListPoints(int n1, int n2) : idx1 {n1}, idx2{n2} { std::stringstream ss{}; ss << "-->Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
-	PairListPoints(PairListPoints &n) { idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Copy constructor. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
-	PairListPoints(PairListPoints &&n) { idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Move constructor. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); };
-	void setListIdx (int a, int b) { idx1 = a; idx2 = b; }
-	int getListIdx1 () const { return idx1; }
-	int getListIdx2 () const { return idx2; }
-	PairListPoints & operator=(const PairListPoints &n) {idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Assignment operator. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); return *this;};
-	~PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points " << idx1 << ", " << idx2 << " destructed." << std::endl; print(ss.str()); };
+	PairWithMatches() { std::stringstream ss{}; ss << "-->Pair of list of points constructed." << std::endl; print(ss.str()); }
+	PairWithMatches(std::shared_ptr<OmniWithFeatures> img1, std::shared_ptr<OmniWithFeatures> img2) : imgs({img1,img2}) { std::stringstream ss{}; ss << "-->Pair of list of points " << getListIdx1() << ", " << getListIdx2() << " constructed." << std::endl; print(ss.str()); };
+//	PairListPoints(PairListPoints &n) { *this = n; std::stringstream ss{}; ss << "-->Copy constructor. Pair of list of points " << getListIdx1() << ", " << getListIdx2() << " constructed." << std::endl; print(ss.str()); };
+//	PairListPoints(PairListPoints &&n) { *this = n; std::stringstream ss{}; ss << "-->Move constructor. Pair of list of points " << getListIdx1() << ", " << getListIdx2() << " constructed." << std::endl; print(ss.str()); };
+	int getListIdx1 () const { return imgs[0]->getImgNum(); }
+	int getListIdx2 () const { return imgs[1]->getImgNum(); }
+//	PairListPoints & operator=(const PairListPoints &n) {idx1 = n.idx1; idx2 = n.idx2; std::stringstream ss{}; ss << "-->Assignment operator. Pair of list of points " << idx1 << ", " << idx2 << " constructed." << std::endl; print(ss.str()); return *this;};
+//	~PairListPoints() { std::stringstream ss{}; ss << "-->Pair of list of points " << getListIdx1() << ", " << getListIdx2() << " destructed." << std::endl; print(ss.str()); };
 };
 
-class Triplets {
-	int idx1 = 0;
-	int idx2 = 1;
-	int idx3 = 2;
-	// List of points
+class TripletsWithMatches {
 public:
 
+	std::shared_ptr<OmniWithFeatures> imgs[3];
 	vector<vector<int>> matches;
 
-	Triplets() { std::stringstream ss{}; ss << "-->Triplets constructed." << std::endl; print(ss.str()); };
-	Triplets(int n1, int n2, int n3) : idx1 {n1}, idx2{n2}, idx3{n3} { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
-	Triplets(Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Copy constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
-	Triplets(Triplets &&n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Move constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
-	void setListIdx (int a, int b, int c) { idx1 = a; idx2 = b; idx3 = c;}
-	int getListIdx1 () const { return idx1; }
-	int getListIdx2 () const { return idx2; }
-	int getListIdx3 () const { return idx3; }
-	Triplets & operator= (Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Assignment operator. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); return *this;};
-	~Triplets() { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " destructed." << std::endl; print(ss.str()); };
+
+	TripletsWithMatches() { std::stringstream ss{}; ss << "-->TripletsWithMatches constructed." << std::endl; print(ss.str()); };
+	TripletsWithMatches(std::shared_ptr<OmniWithFeatures> img0, std::shared_ptr<OmniWithFeatures> img1, std::shared_ptr<OmniWithFeatures> img2)  {this->imgs[0] = img0;this->imgs[1] = img1;this->imgs[2] = img2; std::stringstream ss{}; ss << "-->TripletsWithMatches " << getListIdx1() << ", " << getListIdx2() << ", " << getListIdx3() << " constructed." << std::endl; print(ss.str()); };
+//	Triplets(Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Copy constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
+//	Triplets(Triplets &&n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Move constructor. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); };
+//	void setListIdx (int a, int b, int c) { idx1 = a; idx2 = b; idx3 = c;}
+	int getListIdx1 () const { return imgs[0]->omni->imgNum; }
+	int getListIdx2 () const { return imgs[1]->omni->imgNum; }
+	int getListIdx3 () const { return imgs[2]->omni->imgNum; }
+//	Triplets & operator= (Triplets &n) { idx1 = n.idx1; idx2 = n.idx2; idx3 = n.idx3; std::stringstream ss{}; ss << "-->Assignment operator. Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " constructed." << std::endl; print(ss.str()); return *this;};
+//	~Triplets() { std::stringstream ss{}; ss << "-->Triplets " << idx1 << ", " << idx2 << ", " << idx3 << " destructed." << std::endl; print(ss.str()); };
 };
 
+/*
 class TripletsImages {
 	int idx1 = 0;
 	int idx2 = 1;
@@ -168,7 +171,7 @@ public:
 	}
 
 };
-
+*/
 
 
 
@@ -320,41 +323,40 @@ public:
 
 //=========================================================================================================
 
-void GeneratePairImages () {
+void generatePairImages () {
 
 	int i {0};
 
 	for (;;) {
 		i++;
-		PairImages p1{i};
+		shared_ptr<Omni> p1(new Omni{i});
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		imgProcQueue.push(p1);
 		std::stringstream ss {};
-		ss << "=========================" << std::endl << "Send pair images " << p1.getImgNum() << std::endl << "=========================" << std::endl;
+		ss << "=========================" << std::endl << "Send pair images " << p1->getImgNum() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 	}
 }
 
-PairListPoints FeatureExtraction (std::shared_ptr<PairImages> im1, std::shared_ptr<PairImages> im2) {
+std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures> im1, std::shared_ptr<OmniWithFeatures> im2) {
 
 	std::stringstream ss {};
 	ss << "=========================" << std::endl << "Feature Extraction " << im1->getImgNum() << " - "  << im2->getImgNum() << std::endl << "=========================" << std::endl;
 	print (ss.str());
 
-	PairListPoints p1 { im1->getImgNum(), im2->getImgNum() };
+	std::shared_ptr<PairWithMatches> p1(new  PairWithMatches{im1, im2});
 
     BFMatcher matcher(NORM_HAMMING);
-    vector< vector<DMatch> > nn_matches;
+    vector<vector<DMatch>> nn_matches;
     matcher.knnMatch(im1->desc, im2->desc, nn_matches, 2);
 
 	const float nn_match_ratio = 0.8f;   // Nearest neighbor matching ratio
     for(auto matches : nn_matches) {
-        DMatch first = matches[0];
         float dist1 = matches[0].distance;
         float dist2 = matches[1].distance;
 
         if(dist1 < nn_match_ratio * dist2) {
-            p1.matches.push_back(matches[0]);
+            p1->matches.push_back(matches[0]);
         }
     }
 
@@ -362,34 +364,34 @@ PairListPoints FeatureExtraction (std::shared_ptr<PairImages> im1, std::shared_p
 	return p1;
 }
 
-Triplets CommonPointsComputation (PairListPoints &p1, PairListPoints &p2) {
+shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2) {
 
 	std::stringstream ss {};
-	ss << "=========================" << std::endl << "Common Points Computation (" << p1.getListIdx1() << " - "  << p1.getListIdx2() << ") (" << p2.getListIdx1() << " - " << p2.getListIdx2() << ")" <<  std::endl << "=========================" << std::endl;
+	ss << "=========================" << std::endl << "Common Points Computation (" << p1->getListIdx1() << " - "  << p1->getListIdx2() << ") (" << p2->getListIdx1() << " - " << p2->getListIdx2() << ")" <<  std::endl << "=========================" << std::endl;
 	print (ss.str());
 
-	if (p1.getListIdx2() != p2.getListIdx1()) {
+	if (p1->getListIdx2() != p2->getListIdx1()) {
 		throw std::runtime_error ("Error in indexes in CommonPointComputation");
 	}
 
-	Triplets t1 { p1.getListIdx1(), p1.getListIdx2(), p2.getListIdx2()};
+	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->imgs[0], p1->imgs[1], p1->imgs[1]}));
 
 	const int pairsCount = 2;
-	PairListPoints *p[pairsCount];
-	p[0] = &p1;
-	p[1] = &p2;
+	PairWithMatches *p[pairsCount];
+	p[0] = p1.get();
+	p[1] = p2.get();
 
 
-	for(int p0MatchId = 1;p0MatchId < p[0]->matches.size();p0MatchId++){
+	for(size_t p0MatchId = 1;p0MatchId < p[0]->matches.size();p0MatchId++){
 		bool ok = true;
 		int matchIds[pairsCount];
 		int nextQueryIdx = p[0]->matches[p0MatchId].trainIdx;
 
 		matchIds[0] = p0MatchId;
-		for(int pxId = 1;pxId < pairsCount;pxId++){
-			PairListPoints *px = p[pxId];
+		for(size_t pxId = 1;pxId < pairsCount;pxId++){
+			PairWithMatches *px = p[pxId];
 			ok = false;
-			for(int pxMatchId = 1;pxMatchId < px->matches.size();pxMatchId++){
+			for(size_t pxMatchId = 1;pxMatchId < px->matches.size();pxMatchId++){
 				if(px->matches[pxMatchId].queryIdx == nextQueryIdx){
 					nextQueryIdx = px->matches[pxMatchId].trainIdx;
 					matchIds[pxId] = pxMatchId;
@@ -400,56 +402,55 @@ Triplets CommonPointsComputation (PairListPoints &p1, PairListPoints &p2) {
 			if(!ok) break;
 		}
 		if(ok){
-			t1.matches.push_back(vector<int>(matchIds, matchIds + pairsCount));
+			t1->matches.push_back(vector<int>(matchIds, matchIds + pairsCount));
 		}
 	}
 
 	return t1;
 }
 
-void ProcFeatures() {
+shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni){
+	shared_ptr<OmniWithFeatures> featured(new OmniWithFeatures(omni));
+	//TODO
+	return featured;
+}
 
-	std::vector<std::shared_ptr<PairImages>> v{};
-	std::vector<std::shared_ptr<PairImages>> ims{};
-	std::vector<PairListPoints> lp{};
+void procFeatures() {
+
+	std::vector<std::shared_ptr<OmniWithFeatures>> v{};
+	std::vector<std::shared_ptr<PairWithMatches>> lp{};
 
 	for (;;) {
-		std::shared_ptr<PairImages> receivedPairImages { };
+		std::shared_ptr<Omni> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
 		std::stringstream ss {};
 		ss << "=========================" << std::endl << "Received pair images " << receivedPairImages->getImgNum() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 
-		v.push_back(receivedPairImages);
-		ims.push_back(receivedPairImages);
-
+		auto featuredImages = extractFeatures(receivedPairImages);
+		v.push_back(featuredImages);
 		if (v.size() == 2) {
-			lp.push_back(FeatureExtraction (v[0], v[1]));
+			lp.push_back(omniMatching (v[0], v[1]));
 			v[0]=v[1];
 			v.pop_back();
 		}
 
 		if (lp.size() == 2) {
-			Triplets p1 {CommonPointsComputation (lp[0], lp[1])};
+			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation (lp[0], lp[1]);
 			lp[0] = lp[1];
 			lp.pop_back();
-			TripletsImages ti { p1.getListIdx1(), p1.getListIdx2(), p1.getListIdx3(), ims[0], ims[1], ims[2] };
-			for (auto it = ims.begin(); it!= ims.end()-1; ++it) {
-				*it = *(it+1);
-			}
-			ims.pop_back();
-			tripletsProcQueue.push(ti);
+			tripletsProcQueue.push(p1);
 		}
 	}
 }
 
-Model PoseEstimation (Triplets &t1) {
+shared_ptr<Model> poseEstimation (shared_ptr<TripletsWithMatches> t1) {
 	std::stringstream ss { };
-	ss << "=========================" << std::endl << "Pose Estimation with triplets" << t1.getListIdx1() << " - " << t1.getListIdx2() << " - " << t1.getListIdx3() << std::endl
+	ss << "=========================" << std::endl << "Pose Estimation with triplets" << t1->getListIdx1() << " - " << t1->getListIdx2() << " - " << t1->getListIdx3() << std::endl
 			<< "=========================" << std::endl;
 	print(ss.str());
 
-	Model m1 { t1.getListIdx1(), t1.getListIdx2(), t1.getListIdx3() };
+	shared_ptr<Model> m1 (new Model(t1->getListIdx1(), t1->getListIdx2(), t1->getListIdx3()));
 	return m1;
 }
 
@@ -459,7 +460,7 @@ Matx13f cross(Matx13f a, Matx13f b){
 	return Matx13f(c.x,c.y,c.z);
 }
 
-void FusionModel (Model *m1, Model *m2) {
+void fusionModel (Model *m1, Model *m2) {
 	std::stringstream ss { };
 	ss << "=========================" << std::endl << "Fusion Model (" << m1->getListIdx1() << " - " << m1->getListIdx2() << " - " << m1->getListIdx3() << ")"
 			<< std::endl
@@ -501,16 +502,16 @@ void ProcPose() {
 
 
 	for (;;) {
-		std::shared_ptr<TripletsImages> receivedTripletsImages { };
+		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
 		std::stringstream ss {};
 		ss << "=========================" << std::endl << "Received triplets images " << receivedTripletsImages->getListIdx1() << ", " << receivedTripletsImages->getListIdx2() << ", " << receivedTripletsImages->getListIdx3() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 
-		Triplets t1 {receivedTripletsImages->getListIdx1(), receivedTripletsImages->getListIdx2(), receivedTripletsImages->getListIdx3()};
-		Model m1 {PoseEstimation (t1)};
+//		Triplets t1 {receivedTripletsImages->getListIdx1(), receivedTripletsImages->getListIdx2(), receivedTripletsImages->getListIdx3()};
+		auto m1 = poseEstimation (receivedTripletsImages);
 
-		FusionModel (&m1, &m);
+		fusionModel (&m, m1.get());
 	}
 }
 
@@ -518,8 +519,8 @@ void ProcPose() {
 int main() {
 
 
-	std::thread GenPairs (GeneratePairImages);
-	std::thread ProcessFeatureExtraction (ProcFeatures);
+	std::thread GenPairs (generatePairImages);
+	std::thread ProcessFeatureExtraction (procFeatures);
 	std::thread ProcessPoseEstimation (ProcPose);
 
 	GenPairs.join();
@@ -557,7 +558,7 @@ void testModelFusion(){
 		triplet.keypoints.push_back(ModelKeypoint(Matx13f(200,30,i*10)));
 
 		for(auto p : chopper)triplet.features.push_back(ModelFeature(p, RGB888(255,0, 25*i)));
-		FusionModel(&mainModel, &triplet);
+		fusionModel(&mainModel, &triplet);
 
 	}
 	writePly("keypoints.ply",  keypointsToFeatures(&mainModel.keypoints));
