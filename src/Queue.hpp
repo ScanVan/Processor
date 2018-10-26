@@ -33,6 +33,14 @@ public:
 		cv.notify_one();
 	}
 
+
+	void push(std::shared_ptr<T> value) {
+		std::lock_guard<std::mutex> lg{m};
+		queue.push(value);
+		cv.notify_one();
+	}
+
+
 	std::shared_ptr<T> pop(){
 		std::lock_guard<std::mutex> lg{m};
 		if (queue.empty()){
