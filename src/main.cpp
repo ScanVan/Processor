@@ -324,42 +324,114 @@ public:
 //=========================================================================================================
 
 void generatePairImages () {
+	const int staticImagesCount = 6;
+	Mat staticImages[staticImagesCount];
+	for(int i = 0;i < staticImagesCount;i++){
+		std::stringstream ss {};
+		ss << "resources/0_" << (i+1) << ".bmp";
+		staticImages[i] = imread(ss.str(), IMREAD_UNCHANGED);
+		cout << ss.str() << endl;
+	}
 
 	int i {0};
 
 	for (;;) {
-		i++;
 		shared_ptr<Omni> p1(new Omni{i});
+		int staticImageId = i%(staticImagesCount*2-1);
+		if(staticImageId >= staticImagesCount) staticImageId = staticImagesCount*2-1 - staticImageId;
+		p1->img = staticImages[staticImageId];
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 		imgProcQueue.push(p1);
 		std::stringstream ss {};
 		ss << "=========================" << std::endl << "Send pair images " << p1->getImgNum() << std::endl << "=========================" << std::endl;
 		print (ss.str());
+		i++;
 	}
 }
 
-std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures> im1, std::shared_ptr<OmniWithFeatures> im2) {
 
+//void generatePairImages () {
+//	int i {0};
+//
+//	for (;;) {
+//		i++;
+//		shared_ptr<Omni> p1(new Omni{i});
+//		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+//		imgProcQueue.push(p1);
+//		std::stringstream ss {};
+//		ss << "=========================" << std::endl << "Send pair images " << p1->getImgNum() << std::endl << "=========================" << std::endl;
+//		print (ss.str());
+//	}
+//}
+
+#define DEBUG_PTR(ptr) auto ptr##_ = ptr.get();
+
+shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni){
+	DEBUG_PTR(omni);
+	shared_ptr<OmniWithFeatures> featured(new OmniWithFeatures(omni));
+//****** ORB *****
+//	Ptr<ORB> orb = ORB::create(100000);
+//	orb->setFastThreshold(0);
+//	orb->detectAndCompute(omni->img, Mat(), featured->kpts, featured->desc); //TODO mask
+
+
+	//****** AKAZE *****
+    Ptr<AKAZE> akaze = AKAZE::create(
+		AKAZE::DESCRIPTOR_MLDB,
+		0,  3,
+		0.0001f,  4,
+		4, KAZE::DIFF_PM_G2
+	);
+    akaze->detectAndCompute(omni->img, Mat(), featured->kpts, featured->desc); //TODO mask
+
+	return featured;
+}
+
+
+#include "gms_matcher.h"
+std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures> im1, std::shared_ptr<OmniWithFeatures> im2) {
 	std::stringstream ss {};
 	ss << "=========================" << std::endl << "Feature Extraction " << im1->getImgNum() << " - "  << im2->getImgNum() << std::endl << "=========================" << std::endl;
 	print (ss.str());
 
 	std::shared_ptr<PairWithMatches> p1(new  PairWithMatches{im1, im2});
+	DEBUG_PTR(p1);
 
+//****knnMatcher*****
+//    BFMatcher matcher(NORM_HAMMING);
+//    vector<vector<DMatch>> nn_matches;
+//    matcher.knnMatch(im1->desc, im2->desc, nn_matches, 2);
+//
+//	const float nn_match_ratio = 0.6f;   // Nearest neighbor matching ratio
+//    for(auto matches : nn_matches) {
+//        float dist1 = matches[0].distance;
+//        float dist2 = matches[1].distance;
+//
+//        if(dist1 < nn_match_ratio * dist2) {
+//            p1->matches.push_back(matches[0]);
+//        }
+//    }
+
+
+//**** ORB ****
+    vector<DMatch> matches_all;
     BFMatcher matcher(NORM_HAMMING);
-    vector<vector<DMatch>> nn_matches;
-    matcher.knnMatch(im1->desc, im2->desc, nn_matches, 2);
+	matcher.match(im1->desc, im2->desc, matches_all);
 
-	const float nn_match_ratio = 0.8f;   // Nearest neighbor matching ratio
-    for(auto matches : nn_matches) {
-        float dist1 = matches[0].distance;
-        float dist2 = matches[1].distance;
+	// GMS filter
+	std::vector<bool> vbInliers;
+	gms_matcher gms(im1->kpts, im1->omni->img.size(), im2->kpts, im2->omni->img.size(), matches_all);
+	int num_inliers = gms.GetInlierMask(vbInliers, false, false);
+	cout << "Get total " << num_inliers << " matches." << endl;
 
-        if(dist1 < nn_match_ratio * dist2) {
-            p1->matches.push_back(matches[0]);
-        }
-    }
-
+	// collect matches
+	for (size_t i = 0; i < vbInliers.size(); ++i)
+	{
+		if (vbInliers[i] == true)
+		{
+			p1->matches.push_back(matches_all[i]);
+		}
+	}
 
 	return p1;
 }
@@ -374,27 +446,28 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 		throw std::runtime_error ("Error in indexes in CommonPointComputation");
 	}
 
-	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->imgs[0], p1->imgs[1], p1->imgs[1]}));
-
+	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->imgs[0], p1->imgs[1], p2->imgs[1]}));
+	DEBUG_PTR(t1);
 	const int pairsCount = 2;
 	PairWithMatches *p[pairsCount];
 	p[0] = p1.get();
 	p[1] = p2.get();
 
 
-	for(size_t p0MatchId = 1;p0MatchId < p[0]->matches.size();p0MatchId++){
+	for(size_t p0MatchId = 0;p0MatchId < p[0]->matches.size();p0MatchId++){
 		bool ok = true;
-		int matchIds[pairsCount];
+		int matchIds[pairsCount+1];
 		int nextQueryIdx = p[0]->matches[p0MatchId].trainIdx;
 
-		matchIds[0] = p0MatchId;
+		matchIds[0] = p[0]->matches[p0MatchId].queryIdx;
+		matchIds[1] = nextQueryIdx;
 		for(size_t pxId = 1;pxId < pairsCount;pxId++){
 			PairWithMatches *px = p[pxId];
 			ok = false;
-			for(size_t pxMatchId = 1;pxMatchId < px->matches.size();pxMatchId++){
+			for(size_t pxMatchId = 0;pxMatchId < px->matches.size();pxMatchId++){
 				if(px->matches[pxMatchId].queryIdx == nextQueryIdx){
 					nextQueryIdx = px->matches[pxMatchId].trainIdx;
-					matchIds[pxId] = pxMatchId;
+					matchIds[pxId+1] = nextQueryIdx;
 					ok = true;
 					break;
 				}
@@ -402,18 +475,53 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 			if(!ok) break;
 		}
 		if(ok){
-			t1->matches.push_back(vector<int>(matchIds, matchIds + pairsCount));
+			t1->matches.push_back(vector<int>(matchIds, matchIds + pairsCount + 1));
+		}
+	}
+
+
+	RNG rng(12345);
+
+	{
+		for(int repeat = 0;repeat < 3;repeat++){
+			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
+			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
+			t1->imgs[repeat]->omni->img.copyTo(res);
+			for(auto match : t1->matches){
+				for(int idx = 0;idx < 2;idx++){
+					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+					line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+				}
+//				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+			}
+			namedWindow( "miaou", WINDOW_KEEPRATIO );
+			imshow( "miaou", res);
+			waitKey(0);
+		}
+	}
+
+	for(auto match : t1->matches){
+		for(int repeat = 0;repeat < 3;repeat++){
+			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
+			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
+			t1->imgs[repeat]->omni->img.copyTo(res);
+			for(int idx = 0;idx < 2;idx++){
+				Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+				line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+			}
+
+			circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+
+			namedWindow( "miaou", WINDOW_KEEPRATIO );
+			imshow( "miaou", res);
+			waitKey(0);
 		}
 	}
 
 	return t1;
 }
 
-shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni){
-	shared_ptr<OmniWithFeatures> featured(new OmniWithFeatures(omni));
-	//TODO
-	return featured;
-}
+
 
 void procFeatures() {
 
