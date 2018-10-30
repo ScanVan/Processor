@@ -366,13 +366,13 @@ void generatePairImages () {
 
 #define DEBUG_PTR(ptr) auto ptr##_ = ptr.get();
 
-shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni){
+shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni, shared_ptr<Mat> mask){
 	DEBUG_PTR(omni);
 	shared_ptr<OmniWithFeatures> featured(new OmniWithFeatures(omni));
 //****** ORB *****
 //	Ptr<ORB> orb = ORB::create(100000);
 //	orb->setFastThreshold(0);
-//	orb->detectAndCompute(omni->img, Mat(), featured->kpts, featured->desc); //TODO mask
+//	orb->detectAndCompute(omni->img, *mask, featured->kpts, featured->desc);
 
 
 	//****** AKAZE *****
@@ -382,7 +382,7 @@ shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni){
 		0.0001f,  4,
 		4, KAZE::DIFF_PM_G2
 	);
-    akaze->detectAndCompute(omni->img, Mat(), featured->kpts, featured->desc); //TODO mask
+    akaze->detectAndCompute(omni->img, *mask, featured->kpts, featured->desc);
 
 	return featured;
 }
@@ -483,7 +483,7 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 	RNG rng(12345);
 
 	{
-		for(int repeat = 0;repeat < 3;repeat++){
+		for(int repeat = 0;repeat < 1;repeat++){
 			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
 			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
 			t1->imgs[repeat]->omni->img.copyTo(res);
@@ -500,23 +500,23 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 		}
 	}
 
-	for(auto match : t1->matches){
-		for(int repeat = 0;repeat < 3;repeat++){
-			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
-			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
-			t1->imgs[repeat]->omni->img.copyTo(res);
-			for(int idx = 0;idx < 2;idx++){
-				Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-				line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
-			}
-
-			circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
-
-			namedWindow( "miaou", WINDOW_KEEPRATIO );
-			imshow( "miaou", res);
-			waitKey(0);
-		}
-	}
+//	for(auto match : t1->matches){
+//		for(int repeat = 0;repeat < 3;repeat++){
+//			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
+//			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
+//			t1->imgs[repeat]->omni->img.copyTo(res);
+//			for(int idx = 0;idx < 2;idx++){
+//				Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+//				line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+//			}
+//
+//			circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+//
+//			namedWindow( "miaou", WINDOW_KEEPRATIO );
+//			imshow( "miaou", res);
+//			waitKey(0);
+//		}
+//	}
 
 	return t1;
 }
@@ -527,6 +527,8 @@ void procFeatures() {
 
 	std::vector<std::shared_ptr<OmniWithFeatures>> v{};
 	std::vector<std::shared_ptr<PairWithMatches>> lp{};
+	auto mask = make_shared<Mat>();
+	*mask = imread("resources/mask0.png", IMREAD_GRAYSCALE);
 
 	for (;;) {
 		std::shared_ptr<Omni> receivedPairImages { };
@@ -535,7 +537,7 @@ void procFeatures() {
 		ss << "=========================" << std::endl << "Received pair images " << receivedPairImages->getImgNum() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 
-		auto featuredImages = extractFeatures(receivedPairImages);
+		auto featuredImages = extractFeatures(receivedPairImages, mask);
 		v.push_back(featuredImages);
 		if (v.size() == 2) {
 			lp.push_back(omniMatching (v[0], v[1]));
@@ -574,6 +576,7 @@ void fusionModel (Model *m1, Model *m2) {
 			<< std::endl
 			<< "=========================" << std::endl;
 	print(ss.str());
+	return;
 
 	assert(m1->keypoints.size() >= 3);
 	assert(m2->keypoints.size() == 3);
