@@ -19,10 +19,11 @@
 #include <opencv4/opencv2/features2d.hpp>
 #include <opencv4/opencv2/imgcodecs.hpp>
 #include <opencv4/opencv2/opencv.hpp>
+#include <math.h>
 
 #include "ctpl.hpp"
 #include "Queue.hpp"
-
+#include "Estimation.hpp"
 
 
 using namespace std;
@@ -328,7 +329,7 @@ void generatePairImages () {
 	Mat staticImages[staticImagesCount];
 	for(int i = 0;i < staticImagesCount;i++){
 		std::stringstream ss {};
-		ss << "resources/0_" << (i+1) << ".bmp";
+		ss << "resources/0_" << (i+1) << ".bmp"; //TODO change to i + 1
 		staticImages[i] = imread(ss.str(), IMREAD_UNCHANGED);
 		cout << ss.str() << endl;
 	}
@@ -488,12 +489,15 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
 			t1->imgs[repeat]->omni->img.copyTo(res);
 			for(auto match : t1->matches){
-				for(int idx = 0;idx < 2;idx++){
-					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-					line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
-				}
-//				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+				circle(res, t1->imgs[0]->kpts[match[0]].pt,10,Scalar(0,255,0),2);
 			}
+//			for(auto match : t1->matches){
+//				for(int idx = 0;idx < 2;idx++){
+//					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+//					line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+//				}
+////				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+//			}
 			namedWindow( "miaou", WINDOW_KEEPRATIO );
 			imshow( "miaou", res);
 			waitKey(0);
@@ -606,15 +610,76 @@ void fusionModel (Model *m1, Model *m2) {
 	m1->keypoints.push_back(m1C3);
 }
 
+
+void writePly(const std::string &file, const Vec_Points<double> &features){
+//	‘__gnu_cxx::__normal_iterator<ModelKeypoint*, std::vector<ModelKeypoint> >
+	std::ofstream s {};
+	s.open (file);
+
+	s << "ply" << std::endl;
+	s << "format ascii 1.0 " << std::endl;
+	s << "element vertex " << features.size() << std::endl;
+	s << "comment " << file << std::endl;
+	s << "property float32 x " << std::endl;
+	s << "property float32 y " << std::endl;
+	s << "property float32 z " << std::endl;
+	s << "end_header " << std::endl;
+
+	for(size_t i {0}; i < features.size(); ++i){
+		Points<double> f = features[i];
+		s << f[0] << " " << f[1] << " " << f[2] << std::endl;
+	}
+
+	s.close();
+}
+
 void ProcPose() {
 
 	std::vector <Model> vecm {};
 	Model m {};
 
+	size_t counter {0};
 
 	for (;;) {
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
+
+		std::vector<Vec_Points<double>> p3d_liste;
+
+		auto width = receivedTripletsImages->imgs[0]->omni->img.cols;
+		auto height = receivedTripletsImages->imgs[0]->omni->img.rows;
+
+		for(int idx = 0;idx < 3;idx++){
+			Vec_Points<double> list_matches {};
+			for(auto match : receivedTripletsImages->matches){
+				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
+				/* convert x and y to spherical */
+
+				double theta { xy.x / (width) * 2*M_PI };
+				double phi { xy.y / (height) * M_PI };
+				double x { sin(theta) * sin(phi) };
+				double y { -cos(phi) };
+				double z { cos(theta) * sin(phi) };
+				Points<double> p {x,y,z};
+				list_matches.push_back(p);
+			}
+			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply"};
+			writePly(plyFileNameOri, list_matches);
+
+			p3d_liste.push_back(list_matches);
+		}
+
+		Vec_Points<double> sv_scene{};
+		std::vector<Points<double>> positions {};
+
+		double error_max { 1e-8 };
+
+		pose_estimation (p3d_liste, error_max, sv_scene, positions);
+
+		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply"};
+		counter++;
+		writePly(plyFileName, sv_scene);
+
 		std::stringstream ss {};
 		ss << "=========================" << std::endl << "Received triplets images " << receivedTripletsImages->getListIdx1() << ", " << receivedTripletsImages->getListIdx2() << ", " << receivedTripletsImages->getListIdx3() << std::endl << "=========================" << std::endl;
 		print (ss.str());
