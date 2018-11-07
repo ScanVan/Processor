@@ -283,3 +283,52 @@
 //
 //
 //
+
+
+//
+//void testModelFusion(){
+//	vector<Matx13f> chopper;
+//	 std::fstream myfile("/home/scanvan/scanvan/ply/chopper.cp", std::ios_base::in);
+//
+//	float x,y,z;
+//	while (myfile >> x >> y >> z)
+//	{
+//		chopper.push_back(Matx13f(x,y,z));
+//	}
+//
+//	Model mainModel;
+//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(100,0,0)));
+//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(200,0,0)));
+//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(300,0,0)));
+//	for(auto p : chopper)mainModel.features.push_back(ModelFeature(p));
+//
+//	for(int i = 0;i < 10;i ++){
+//		Model triplet;
+//		triplet.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+//		triplet.keypoints.push_back(ModelKeypoint(Matx13f(100 - i*2,10,5)));
+//		triplet.keypoints.push_back(ModelKeypoint(Matx13f(200,30,i*10)));
+//
+//		for(auto p : chopper)triplet.features.push_back(ModelFeature(p, RGB888(255,0, 25*i)));
+//		fusionModel(&mainModel, &triplet);
+//
+//	}
+//	writePly("keypoints.ply",  keypointsToFeatures(&mainModel.keypoints));
+//	writePly("features.ply",  mainModel.features);
+//
+//
+//	//	Model mainModel;
+//	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+//	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(10,1,9)));
+//	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(16,7,4)));
+//	//	mainModel.keypoints.push_back(ModelKeypoint(Matx13f(22,11,5)));
+//	//
+//	//	Model triplet;
+//	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(0,0,0)));
+//	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(2,7,5)));
+//	//	triplet.keypoints.push_back(ModelKeypoint(Matx13f(1,8,4)));
+//	//	pos_1 = [[0,0,0],[10,1,9],[20,7,4],[30,11,5]]
+//	//	pos_2 = [[0,0,0],[2,7,5],[20,20,0]]
+//
+//}
+
