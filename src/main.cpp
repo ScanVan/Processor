@@ -25,6 +25,7 @@
 #include "Queue.hpp"
 #include "Estimation.hpp"
 
+#include "gms_matcher.h"
 
 using namespace std;
 using namespace cv;
@@ -389,7 +390,7 @@ shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni, shared_ptr<M
 }
 
 
-#include "gms_matcher.h"
+
 std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures> im1, std::shared_ptr<OmniWithFeatures> im2) {
 	std::stringstream ss {};
 	ss << "=========================" << std::endl << "Feature Extraction " << im1->getImgNum() << " - "  << im2->getImgNum() << std::endl << "=========================" << std::endl;
@@ -483,14 +484,14 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 
 	RNG rng(12345);
 
-	{
-		for(int repeat = 0;repeat < 1;repeat++){
-			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
-			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
-			t1->imgs[repeat]->omni->img.copyTo(res);
-			for(auto match : t1->matches){
-				circle(res, t1->imgs[0]->kpts[match[0]].pt,10,Scalar(0,255,0),2);
-			}
+//	{
+//		for(int repeat = 0;repeat < 1;repeat++){
+//			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
+//			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
+//			t1->imgs[repeat]->omni->img.copyTo(res);
+////			for(auto match : t1->matches){
+////				circle(res, t1->imgs[0]->kpts[match[0]].pt,10,Scalar(0,255,0),2);
+////			}
 //			for(auto match : t1->matches){
 //				for(int idx = 0;idx < 2;idx++){
 //					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
@@ -498,11 +499,11 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 //				}
 ////				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
 //			}
-			namedWindow( "miaou", WINDOW_KEEPRATIO );
-			imshow( "miaou", res);
-			waitKey(0);
-		}
-	}
+//			namedWindow( "miaou", WINDOW_KEEPRATIO );
+//			imshow( "miaou", res);
+//			waitKey(0);
+//		}
+//	}
 
 //	for(auto match : t1->matches){
 //		for(int repeat = 0;repeat < 3;repeat++){
@@ -708,8 +709,6 @@ int main() {
 }
 
 
-#include <iostream>
-#include <fstream>
 void testModelFusion(){
 	vector<Matx13f> chopper;
 	 std::fstream myfile("/home/scanvan/scanvan/ply/chopper.cp", std::ios_base::in);
