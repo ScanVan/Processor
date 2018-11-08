@@ -1,0 +1,16 @@
+#ifndef SRC_CONFIG_HPP_
+#define SRC_CONFIG_HPP_
+
+
+//#define USE_ORB_FEATURE
+#define USE_AKAZE_FEATURE
+
+//#define USE_KNN_MATCHER
+#define USE_GMS_FILTER
+
+#define DISPLAY_TRIPLET_MATCHES
+//#define DISPLAY_TRIPLET_MATCHES_INDIVIDUAL
+
+
+
+#endif /* SRC_CONFIG_HPP_ */

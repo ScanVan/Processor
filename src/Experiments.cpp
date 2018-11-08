@@ -332,3 +332,78 @@
 //
 //}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+//	    vector<DMatch> matches_all;
+//	    BFMatcher matcher(NORM_HAMMING);
+//		matcher.match(filtersDesc, featuredImages->desc, matches_all);
+//
+//		// GMS filter
+//		std::vector<bool> vbInliers;
+//		gms_matcher gms(filtersKpts, featuredImages->omni->img.size(), featuredImages->kpts, featuredImages->omni->img.size(), matches_all);
+//		int num_inliers = gms.GetInlierMask(vbInliers, false, false);
+//		cout << "Get total " << num_inliers << " matches." << endl;
+//
+//		// collect matches
+//	    vector<DMatch> matches;
+//		for (size_t i = 0; i < vbInliers.size(); ++i)
+//		{
+//			if (vbInliers[i] == true)
+//			{
+//				matches.push_back(matches_all[i]);
+//			}
+//		}
+//		Point2f filterPos(0,0);
+//		for (auto m : matches){
+//			filterPos += featuredImages->kpts[m.trainIdx].pt;
+//		}
+//		filterPos.x /= matches.size();
+//		filterPos.y /= matches.size();
+//	    vector<KeyPoint> newKpts; //Keypoints extracted from img.
+//	    Mat newDesc = featuredImages->desc.clone();
+//	    int dstIdx = 0;
+//	    for(int idx = 0;idx < featuredImages->kpts.size();idx++){
+//	    	auto kpt = featuredImages->kpts[idx];
+//	    	if(norm(kpt.pt-filterPos) < 200){
+//	    		newKpts.push_back(featuredImages->kpts[idx]);
+//	    		featuredImages->desc.row(idx).copyTo(newDesc.row(dstIdx++));
+//	    	}
+//	    }
+////	    for(int idx = 0;idx < matches.size();idx++){
+////	    	auto m = matches[idx];
+////	    	newKpts.push_back(featuredImages->kpts[m.trainIdx]);
+////	    	featuredImages->desc.row(m.trainIdx).copyTo(newDesc.row(idx));
+////	    }
+//	    featuredImages->kpts = newKpts;
+//	    featuredImages->desc = newDesc;
+//	    featuredImages->desc.resize(newKpts.size());
+//		{
+//	    	RNG rng(12345);
+//
+//			int w=featuredImages->omni->img.cols,h=featuredImages->omni->img.rows;
+//			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
+//			featuredImages->omni->img.copyTo(res);
+////			for(auto match : t1->matches){
+////				circle(res, t1->imgs[0]->kpts[match[0]].pt,10,Scalar(0,255,0),2);
+////			}
+//			for(auto kpt : featuredImages->kpts){
+//				Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+//				circle(res, kpt.pt,10,Scalar(0,255,0),2);
+//			}
+//			namedWindow( "miaou", WINDOW_KEEPRATIO );
+//			imshow( "miaou", res);
+//			waitKey(0);
+//		}
+
+
