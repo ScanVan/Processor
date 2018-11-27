@@ -11,7 +11,7 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 	}
 
 	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->imgs[0], p1->imgs[1], p2->imgs[1]}));
-	DEBUG_PTR(t1);
+	//DEBUG_PTR(t1);
 	const int pairsCount = 2;
 	PairWithMatches *p[pairsCount];
 	p[0] = p1.get();

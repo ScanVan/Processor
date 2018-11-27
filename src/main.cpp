@@ -86,83 +86,98 @@ void generatePairImages () {
 
 void procFeatures() {
 
-	std::vector<std::shared_ptr<OmniWithFeatures>> v{};
-	std::vector<std::shared_ptr<PairWithMatches>> lp{};
+	std::deque<std::shared_ptr<OmniWithFeatures>> v { };
+	std::deque<std::shared_ptr<PairWithMatches>> lp { };
+
+	// reads the mask to apply on the images
 	auto mask = make_shared<Mat>(imread("resources/mask0.png", IMREAD_GRAYSCALE));
-	auto filterPath = vector<const char*>({"resources/0_0.bmp"});
-    vector<KeyPoint> filtersKpts; //Keypoints extracted from img.
-    Mat filtersDesc;
+
+//	auto filterPath = vector<const char*>({"resources/0_0.bmp"});
+//  vector<KeyPoint> filtersKpts; //Keypoints extracted from img.
+//    Mat filtersDesc;
 //	for(auto ip : filterPath){
-		auto filterImg = imread("resources/mire.bmp", IMREAD_UNCHANGED);
-	    Ptr<AKAZE> akaze = AKAZE::create(
-			AKAZE::DESCRIPTOR_MLDB,
-			0,  3,
-			0.0001f,  4,
-			4, KAZE::DIFF_PM_G2
-		);
-	    akaze->detectAndCompute(filterImg, Mat(), filtersKpts, filtersDesc);
+//		auto filterImg = imread("resources/mire.bmp", IMREAD_UNCHANGED);
+//	    Ptr<AKAZE> akaze = AKAZE::create(
+//			AKAZE::DESCRIPTOR_MLDB,
+//			0,  3,
+//			0.0001f,  4,
+//			4, KAZE::DIFF_PM_G2
+//		);
+//	    akaze->detectAndCompute(filterImg, Mat(), filtersKpts, filtersDesc);
 //	}
 
-
 	for (;;) {
+
 		std::shared_ptr<Omni> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
+
 		std::stringstream ss {};
-		ss << "=========================" << std::endl << "Received pair images " << receivedPairImages->idString() << std::endl << "=========================" << std::endl;
+		ss << "=========================" << std::endl
+		   << "Received pair images " << receivedPairImages->idString() << std::endl
+		   << "=========================" << std::endl;
 		print (ss.str());
 
 		auto featuredImages = extractFeatures(receivedPairImages, mask);
 
-		v.push_back(featuredImages);
+		// v is a sort of queue where the extracted features are stored
+		v.push_front(featuredImages);
+		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
+		// and the last set of features is discarded
 		if (v.size() == 2) {
-			lp.push_back(omniMatching (v[0], v[1]));
-			v[0]=v[1];
+			lp.push_front(omniMatching(v[1], v[0]));
 			v.pop_back();
 		}
 
+		// lp is a sort of queue where the matches are stored
+		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
-			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation (lp[0], lp[1]);
-			lp[0] = lp[1];
+			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			lp.pop_back();
+			// push the triplet to the thread-safe queue and send it for pose estimation
 			tripletsProcQueue.push(p1);
 		}
 	}
 }
 
-
-
+//=========================================================================================================
 
 void ProcPose() {
 
-	std::vector <Model> vecm {};
-	Model m {};
-
-	size_t counter {0};
+	std::vector<Model> vecm { };
+	Model m { };
+	size_t counter { 0 };
 	RNG rng(12345);
+
 	for (;;) {
+
+		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
 
 		std::vector<Vec_Points<double>> p3d_liste;
 
+		// width and height of the images
 		auto width = receivedTripletsImages->imgs[0]->omni->img.cols;
 		auto height = receivedTripletsImages->imgs[0]->omni->img.rows;
 
-		for(int idx = 0;idx < 3;idx++){
-			Vec_Points<double> list_matches {};
-			for(auto match : receivedTripletsImages->matches){
-				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
-				/* convert x and y to spherical */
+		for (int idx { 0 }; idx < 3; ++idx) {
+			Vec_Points<double> list_matches { };
 
-				double theta { xy.x / (width) * 2*M_PI };
-				double phi { xy.y / (height) * M_PI };
-				double x { sin(theta) * sin(phi) };
-				double y { -cos(phi) };
-				double z { cos(theta) * sin(phi) };
-				Points<double> p {x,y,z};
+			for(auto match : receivedTripletsImages->matches){
+				// gets the positions of the features
+				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
+
+				/* convert x and y to spherical */
+				double theta { (xy.x / width) * 2 * M_PI };
+				double phi { M_PI / 2 - (xy.y / (height - 1)) * M_PI };
+				double x { -cos(phi) * cos(theta) };
+				double y { cos(phi) * sin(theta) };
+				double z { sin(phi) };
+				Points<double> p { x, y, z };
 				list_matches.push_back(p);
 			}
-			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply"};
+
+			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply" };
 			writePly(plyFileNameOri, list_matches);
 
 			p3d_liste.push_back(list_matches);
@@ -177,7 +192,7 @@ void ProcPose() {
 
 		Model m2;
 		Matx13f modelCenter(0,0,0);
-		double x = 0,y = 0,z = 0;
+		//double x = 0,y = 0,z = 0;
 		for(size_t i {0}; i < positions.size(); ++i){
 			Points<double> f = positions[i];
 			modelCenter = modelCenter + Matx13f(f[0],f[1],f[2]);

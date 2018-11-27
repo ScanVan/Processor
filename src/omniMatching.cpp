@@ -8,7 +8,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures>
 	print (ss.str());
 
 	std::shared_ptr<PairWithMatches> p1(new  PairWithMatches{im1, im2});
-	DEBUG_PTR(p1);
+	//DEBUG_PTR(p1);
 
 #ifdef USE_KNN_MATCHER
     BFMatcher matcher(NORM_HAMMING);

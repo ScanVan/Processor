@@ -2,7 +2,7 @@
 
 
 shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni, shared_ptr<Mat> mask){
-	DEBUG_PTR(omni);
+	//DEBUG_PTR(omni);
 	shared_ptr<OmniWithFeatures> featured(new OmniWithFeatures(omni));
 
 #ifdef USE_ORB_FEATURE
