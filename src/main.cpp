@@ -29,45 +29,60 @@
 using namespace std;
 using namespace cv;
 
-
+// Thread-safe queue for communication between the generation of the images and the feature extraction
 ScanVan::thread_safe_queue<Omni> imgProcQueue {};
-ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
-ctpl::thread_pool p(4 /* two threads in the pool */);
 
+// Thread-safe queue for communication between the feature extraction and pose estimation
+ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
+
+ctpl::thread_pool p(4 /* two threads in the pool */);
 
 //=========================================================================================================
 
 void generatePairImages () {
-	const int staticImagesCount = 6;
-	Mat staticImages[staticImagesCount];
-	for(int i = 0;i < staticImagesCount;i++){
-		std::stringstream ss {};
-		ss << "resources/equi_" << (i+1) << ".bmp";
+
+	const int staticImagesCount { 6 };
+
+	cv::Mat staticImages[staticImagesCount] { };
+
+	for (int i { 0 }; i < staticImagesCount; ++i) {
+		std::stringstream ss { };
+		ss << "./resources/0_" << (i + 1) << ".bmp";
 		staticImages[i] = imread(ss.str(), IMREAD_UNCHANGED);
 		cout << ss.str() << endl;
 	}
 
-	int i {0};
+	int i { 0 };
 
 	for (;;) {
-		shared_ptr<Omni> p1(new Omni{i});
-		int staticImageId = i%(staticImagesCount*2-1);
-		if(staticImageId >= staticImagesCount) staticImageId = staticImagesCount*2-1 - staticImageId;
+
+		std::shared_ptr<Omni> p1(new Omni { i });
+
+		// This is to make the index increment and decrement in a saw-like fashion
+		// staticImageId will take values 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, etc
+		int staticImageId { i % (staticImagesCount * 2 - 1 - 1) };
+		if (staticImageId >= staticImagesCount)
+			staticImageId = staticImagesCount * 2 - 1 - staticImageId - 1;
+
 		p1->img = staticImages[staticImageId];
+
+		// simulates the delay of image acquisition
 		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+		// push to the queue
 		imgProcQueue.push(p1);
-		std::stringstream ss {};
-		ss << "=========================" << std::endl << "Send pair images " << p1->idString() << std::endl << "=========================" << std::endl;
-		print (ss.str());
-		i++;
+
+		std::stringstream ss { };
+		ss << "=========================" << std::endl
+		   << "Send pair images " << p1->idString() << std::endl
+		   << "=========================" << std::endl;
+		print(ss.str());
+
+		++i;
 	}
 }
 
-
-
-
-
-
+//=========================================================================================================
 
 void procFeatures() {
 

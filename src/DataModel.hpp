@@ -21,14 +21,18 @@
 using namespace cv;
 using namespace std;
 
-class Omni{
+class Omni {
 public:
 	Mat img;
 	int imgNum = 0;
 
-	Omni(int imgNum) : imgNum(imgNum){}
+	Omni(int imgNum) :
+			imgNum(imgNum) {
+	}
 
-	string idString() { return to_string(imgNum); }
+	string idString() {
+		return to_string(imgNum);
+	}
 };
 
 //Omnidirectional image, img is composed by the two camera pictures
