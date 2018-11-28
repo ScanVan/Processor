@@ -183,48 +183,52 @@ void ProcPose() {
 			p3d_liste.push_back(list_matches);
 		}
 
-		Vec_Points<double> sv_scene{};
-		std::vector<Points<double>> positions {};
+		Vec_Points<double> sv_scene { };
+		std::vector<Points<double>> positions { };
 
 		double error_max { 1e-8 };
 
+		// call to pose estimation algorithm
 		pose_estimation (p3d_liste, error_max, sv_scene, positions);
 
-		Model m2;
-		Matx13f modelCenter(0,0,0);
-		//double x = 0,y = 0,z = 0;
-		for(size_t i {0}; i < positions.size(); ++i){
+		Model m2 { };
+		Matx13f modelCenter(0, 0, 0);
+
+		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
-			modelCenter = modelCenter + Matx13f(f[0],f[1],f[2]);
+			modelCenter = modelCenter + Matx13f(f[0], f[1], f[2]);
 		}
-		modelCenter = 1.0/positions.size()*modelCenter;
+
+		modelCenter = 1.0 / positions.size() * modelCenter;
 		double averageDistance = 0;
-		for(size_t i {0}; i < sv_scene.size(); ++i){
+		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			averageDistance += norm(modelCenter - Matx13f(f[0],f[1],f[2]));
+			averageDistance += norm(modelCenter - Matx13f(f[0], f[1], f[2]));
 		}
 		averageDistance /= sv_scene.size();
-		RGB888 modelColor = RGB888(rng.uniform(0, 255),rng.uniform(0, 255), rng.uniform(0, 255));
-		for(size_t i {0}; i < sv_scene.size(); ++i){
+		RGB888 modelColor = RGB888(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			if(norm(Matx13f(f[0],f[1],f[2])-modelCenter) > 10*averageDistance)
+			if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
 				continue;
-			m2.features.push_back(ModelFeature(1000*Matx13f(f[0],f[1],f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
+			m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
-		for(size_t i {0}; i < positions.size(); ++i){
+		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
-			m2.keypoints.push_back(ModelKeypoint(1000*Matx13f(f[0],f[1],f[2])));
+			m2.keypoints.push_back(ModelKeypoint(1000 * Matx13f(f[0], f[1], f[2])));
 		}
-		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply"};
+		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
 		writePly(plyFileName, m2.features);
 
 
 		std::stringstream ss {};
-		ss << "=========================" << std::endl << "Received triplets images " << receivedTripletsImages->idString() << std::endl << "=========================" << std::endl;
+		ss << "=========================" << std::endl
+		   << "Received triplets images " << receivedTripletsImages->idString() << std::endl
+		   << "=========================" << std::endl;
 		print (ss.str());
 
-		fusionModel (&m, &m2);
-		std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply"};
+		fusionModel(&m, &m2);
+		std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		writePly(fusionFileName, m.features);
 		counter++;
 	}

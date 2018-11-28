@@ -2,9 +2,9 @@
 
 void fusionModel (Model *m1, Model *m2) {
 	std::stringstream ss { };
-	ss << "=========================" << std::endl << "Fusion Model (" << m2->keypoints.size() << " into " << m1->keypoints.size() << ")"
-			<< std::endl
-			<< "=========================" << std::endl;
+	ss << "=========================" << std::endl
+	   << "Fusion Model (" << m2->keypoints.size() << " into " << m1->keypoints.size() << ")" << std::endl
+	   << "=========================" << std::endl;
 	print(ss.str());
 	if(m1->keypoints.empty()){
 		m1->features.insert(m1->features.end(), m2->features.begin(), m2->features.end());
