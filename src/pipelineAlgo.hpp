@@ -33,7 +33,7 @@ shared_ptr<Model> poseEstimation (shared_ptr<TripletsWithMatches> t1);
 void fusionModel (Model *m1, Model *m2);
 
 
-void ProcPose();
+//void ProcPose();
 
 
 

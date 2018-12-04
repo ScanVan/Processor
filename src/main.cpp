@@ -37,9 +37,43 @@ ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 
 ctpl::thread_pool p(4 /* two threads in the pool */);
 
+class MeasureTime {
+
+public:
+
+	bool terminateProgram = false;
+
+	long int number_gen_pairs { 0 };
+	std::chrono::duration<double> total_duration_gen_pairs { 0 };
+	double get_avg_gen_pairs() {
+		return total_duration_gen_pairs.count() / number_gen_pairs * 1000.0;
+	}
+
+	long int number_feature_extract { 0 };
+	std::chrono::duration<double> total_duration_feature_extract { 0 };
+	double get_avg_feature_extract() {
+		return total_duration_feature_extract.count() / number_feature_extract * 1000.0;
+	}
+
+	long int number_pose_estimation { 0 };
+	std::chrono::duration<double> total_duration_pose_estimation { 0 };
+	double get_avg_pose_estimation() {
+		return total_duration_pose_estimation.count() / number_pose_estimation * 1000.0;
+	}
+
+	long int number_fusion { 0 };
+	std::chrono::duration<double> total_duration_fusion { 0 };
+	double get_avg_fusion() {
+		return total_duration_fusion.count() / number_fusion * 1000.0;
+	}
+
+};
+
+
+
 //=========================================================================================================
 
-void generatePairImages () {
+void generatePairImages (MeasureTime *mt) {
 
 	const int staticImagesCount { 6 };
 
@@ -52,10 +86,17 @@ void generatePairImages () {
 		cout << ss.str() << endl;
 	}
 
-	int i { 0 };
+	//int i { 0 };
 
-	for (;;) {
+	std::chrono::high_resolution_clock::time_point t1 { };
+	std::chrono::high_resolution_clock::time_point t2 { };
 
+
+	for (int i { 0 }; i < 40; ++i) {
+
+		t1 = std::chrono::high_resolution_clock::now();
+
+		//-----------------------------------------------------
 		std::shared_ptr<Omni> p1(new Omni { i });
 
 		// This is to make the index increment and decrement in a saw-like fashion
@@ -67,7 +108,7 @@ void generatePairImages () {
 		p1->img = staticImages[staticImageId];
 
 		// simulates the delay of image acquisition
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
 		// push to the queue
 		imgProcQueue.push(p1);
@@ -77,14 +118,20 @@ void generatePairImages () {
 		   << "Send pair images " << p1->idString() << std::endl
 		   << "=========================" << std::endl;
 		print(ss.str());
+		//-----------------------------------------------------
 
-		++i;
+		t2 = std::chrono::high_resolution_clock::now();
+		mt->total_duration_gen_pairs += t2 - t1;
+		mt->number_gen_pairs++;
+
+		//++i;
 	}
+	mt->terminateProgram = true;
 }
 
 //=========================================================================================================
 
-void procFeatures() {
+void procFeatures (MeasureTime *mt) {
 
 	std::deque<std::shared_ptr<OmniWithFeatures>> v { };
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
@@ -106,7 +153,12 @@ void procFeatures() {
 //	    akaze->detectAndCompute(filterImg, Mat(), filtersKpts, filtersDesc);
 //	}
 
-	for (;;) {
+	std::chrono::high_resolution_clock::time_point t1 { };
+	std::chrono::high_resolution_clock::time_point t2 { };
+
+
+	//for (;;) {
+	while (!mt->terminateProgram) {
 
 		std::shared_ptr<Omni> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
@@ -117,7 +169,15 @@ void procFeatures() {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
+		t1 = std::chrono::high_resolution_clock::now();
+
+		//-----------------------------------------------------
 		auto featuredImages = extractFeatures(receivedPairImages, mask);
+		//-----------------------------------------------------
+		t2 = std::chrono::high_resolution_clock::now();
+		mt->total_duration_feature_extract += t2 - t1;
+		mt->number_feature_extract++;
+
 
 		// v is a sort of queue where the extracted features are stored
 		v.push_front(featuredImages);
@@ -141,14 +201,19 @@ void procFeatures() {
 
 //=========================================================================================================
 
-void ProcPose() {
+void ProcPose (MeasureTime *mt) {
 
 	std::vector<Model> vecm { };
 	Model m { };
 	size_t counter { 0 };
 	RNG rng(12345);
 
-	for (;;) {
+	std::chrono::high_resolution_clock::time_point t1 { };
+	std::chrono::high_resolution_clock::time_point t2 { };
+
+
+	//for (;;) {
+	while(!mt->terminateProgram) {
 
 		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
@@ -188,8 +253,14 @@ void ProcPose() {
 
 		double error_max { 1e-8 };
 
+		t1 = std::chrono::high_resolution_clock::now();
+		//-----------------------------------------------------
 		// call to pose estimation algorithm
 		pose_estimation (p3d_liste, error_max, sv_scene, positions);
+		//-----------------------------------------------------
+		t2 = std::chrono::high_resolution_clock::now();
+		mt->total_duration_pose_estimation += t2 - t1;
+		mt->number_pose_estimation++;
 
 		Model m2 { };
 		Matx13f modelCenter(0, 0, 0);
@@ -227,7 +298,14 @@ void ProcPose() {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
+		t1 = std::chrono::high_resolution_clock::now();
+		//-----------------------------------------------------
 		fusionModel(&m, &m2);
+		//-----------------------------------------------------
+		t2 = std::chrono::high_resolution_clock::now();
+		mt->total_duration_fusion += t2 - t1;
+		mt->number_fusion++;
+
 		std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		writePly(fusionFileName, m.features);
 		counter++;
@@ -237,14 +315,20 @@ void ProcPose() {
 
 int main() {
 
+	MeasureTime mt{};
 
-	std::thread GenPairs (generatePairImages);
-	std::thread ProcessFeatureExtraction (procFeatures);
-	std::thread ProcessPoseEstimation (ProcPose);
+	std::thread GenPairs (generatePairImages, &mt);
+	std::thread ProcessFeatureExtraction (procFeatures, &mt);
+	std::thread ProcessPoseEstimation (ProcPose, &mt);
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation.join();
+
+	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
+	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;
+	std::cout << "Average duration lapse pose estimation: " << mt.get_avg_pose_estimation() << " ms" << std::endl;
+	std::cout << "Average duration lapse fusion: " << mt.get_avg_fusion() << " ms" << std::endl;
 
 	return 0;
 

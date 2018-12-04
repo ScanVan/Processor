@@ -357,7 +357,7 @@ void pose_estimation (const std::vector<Vec_Points<T>> &p3d_liste, const T error
 		T diff_temp { sv_e_norm - sv_e_old };
 		diff_error = diff_temp > 0 ? diff_temp : -diff_temp;
 
-		std::cout << counter << " " << sv_e_norm << std::endl;
+		//std::cout << counter << " " << sv_e_norm << std::endl;
 
 	}
 
