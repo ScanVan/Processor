@@ -67,6 +67,19 @@ public:
 		return total_duration_fusion.count() / number_fusion * 1000.0;
 	}
 
+	long int number_common_p { 0 };
+	std::chrono::duration<double> total_duration_common_p { 0 };
+	double get_avg_common_p() {
+		return total_duration_common_p.count() / number_common_p * 1000.0;
+	}
+
+	long int number_omni_matching { 0 };
+	std::chrono::duration<double> total_duration_omni_matching { 0 };
+	double get_avg_omni_matching() {
+		return total_duration_omni_matching.count() / number_omni_matching * 1000.0;
+	}
+
+
 };
 
 
@@ -184,14 +197,26 @@ void procFeatures (MeasureTime *mt) {
 		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
 		// and the last set of features is discarded
 		if (v.size() == 2) {
+			t1 = std::chrono::high_resolution_clock::now();
+			//-----------------------------------------------------
 			lp.push_front(omniMatching(v[1], v[0]));
+			//-----------------------------------------------------
+			t2 = std::chrono::high_resolution_clock::now();
+			mt->total_duration_omni_matching += t2 - t1;
+			mt->number_omni_matching++;
 			v.pop_back();
 		}
 
 		// lp is a sort of queue where the matches are stored
 		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
+			t1 = std::chrono::high_resolution_clock::now();
+			//-----------------------------------------------------
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
+			//-----------------------------------------------------
+			t2 = std::chrono::high_resolution_clock::now();
+			mt->total_duration_common_p += t2 - t1;
+			mt->number_common_p++;
 			lp.pop_back();
 			// push the triplet to the thread-safe queue and send it for pose estimation
 			tripletsProcQueue.push(p1);
@@ -327,6 +352,8 @@ int main() {
 
 	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
 	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;
+	std::cout << "Average duration lapse omni matching: " << mt.get_avg_omni_matching() << " ms" << std::endl;
+	std::cout << "Average duration lapse common point computation: " << mt.get_avg_common_p() << " ms" << std::endl;
 	std::cout << "Average duration lapse pose estimation: " << mt.get_avg_pose_estimation() << " ms" << std::endl;
 	std::cout << "Average duration lapse fusion: " << mt.get_avg_fusion() << " ms" << std::endl;
 
