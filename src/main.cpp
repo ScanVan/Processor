@@ -121,7 +121,7 @@ void generatePairImages (MeasureTime *mt) {
 		p1->img = staticImages[staticImageId];
 
 		// simulates the delay of image acquisition
-		std::this_thread::sleep_for(std::chrono::milliseconds(250));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		// push to the queue
 		imgProcQueue.push(p1);
