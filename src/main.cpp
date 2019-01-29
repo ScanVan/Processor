@@ -20,14 +20,17 @@
 #include <opencv4/opencv2/imgcodecs.hpp>
 #include <opencv4/opencv2/opencv.hpp>
 #include <math.h>
+#include <experimental/filesystem>
 
 #include "ctpl.hpp"
 #include "Queue.hpp"
 #include "Estimation.hpp"
 #include "pipelineAlgo.hpp"
+#include "Cartesian2Spherical.hpp"
 
 using namespace std;
 using namespace cv;
+namespace fs = std::experimental::filesystem;
 
 // Thread-safe queue for communication between the generation of the images and the feature extraction
 ScanVan::thread_safe_queue<Omni> imgProcQueue {};
@@ -88,7 +91,55 @@ public:
 
 void generatePairImages (MeasureTime *mt) {
 
-	const int staticImagesCount { 6 };
+	std::vector<std::string> file_list{};
+	for (auto& p : fs::directory_iterator("data"))
+		file_list.push_back(p.path().u8string());
+
+	std::sort(file_list.begin(), file_list.end());
+
+	int img_counter { 0 };
+
+	for (auto &file: file_list) {
+
+		cv::Mat input_image { };
+		input_image = imread(file, cv::IMREAD_UNCHANGED);
+
+		if (!input_image.data) {
+			throw std::runtime_error("Could not load the input image");
+		}
+
+		std::cout << file << '\n';
+
+		std::shared_ptr<Omni> p1(new Omni { img_counter });
+
+		p1->img = input_image;
+
+		// simulates the delay of image acquisition
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+		// push to the queue
+		imgProcQueue.push(p1);
+
+		std::stringstream ss { };
+		ss << "=========================" << std::endl
+		   << "Send pair images " << p1->idString() << std::endl
+		   << "=========================" << std::endl;
+		print(ss.str());
+
+
+/*
+		namedWindow("Display window", WINDOW_NORMAL);
+		imshow ("Display window", input_image);
+
+
+		waitKey(0);
+
+*/
+		img_counter++;
+	}
+
+
+/*	const int staticImagesCount { 6 };
 
 	cv::Mat staticImages[staticImagesCount] { };
 
@@ -138,7 +189,7 @@ void generatePairImages (MeasureTime *mt) {
 		mt->number_gen_pairs++;
 
 		//++i;
-	}
+	} */
 	mt->terminateProgram = true;
 }
 
@@ -150,7 +201,7 @@ void procFeatures (MeasureTime *mt) {
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
-	auto mask = make_shared<Mat>(imread("resources/mask0.png", IMREAD_GRAYSCALE));
+	auto mask = make_shared<Mat>(imread("data/mask0.png", IMREAD_GRAYSCALE));
 
 //	auto filterPath = vector<const char*>({"resources/0_0.bmp"});
 //  vector<KeyPoint> filtersKpts; //Keypoints extracted from img.
@@ -171,7 +222,7 @@ void procFeatures (MeasureTime *mt) {
 
 
 	//for (;;) {
-	while (!mt->terminateProgram) {
+	while ((!mt->terminateProgram)||(!imgProcQueue.empty())) {
 
 		std::shared_ptr<Omni> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
@@ -238,7 +289,7 @@ void ProcPose (MeasureTime *mt) {
 
 
 	//for (;;) {
-	while(!mt->terminateProgram) {
+	while((!mt->terminateProgram)||(!tripletsProcQueue.empty())) {
 
 		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
@@ -258,12 +309,8 @@ void ProcPose (MeasureTime *mt) {
 				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
 
 				/* convert x and y to spherical */
-				double theta { (xy.x / width) * 2 * M_PI };
-				double phi { M_PI / 2 - (xy.y / (height - 1)) * M_PI };
-				double x { -cos(phi) * cos(theta) };
-				double y { cos(phi) * sin(theta) };
-				double z { sin(phi) };
-				Points<double> p { x, y, z };
+				Points<double> p = convertCartesian2Spherical (static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
+
 				list_matches.push_back(p);
 			}
 
@@ -305,9 +352,10 @@ void ProcPose (MeasureTime *mt) {
 		RGB888 modelColor = RGB888(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
-				continue;
-			m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
+			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
+				continue;*/
+			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
+			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
 		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
@@ -325,20 +373,22 @@ void ProcPose (MeasureTime *mt) {
 
 		t1 = std::chrono::high_resolution_clock::now();
 		//-----------------------------------------------------
-		fusionModel(&m, &m2);
+		//fusionModel(&m, &m2);
 		//-----------------------------------------------------
 		t2 = std::chrono::high_resolution_clock::now();
 		mt->total_duration_fusion += t2 - t1;
 		mt->number_fusion++;
 
-		std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
-		writePly(fusionFileName, m.features);
+		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
+		//writePly(fusionFileName, m.features);
 		counter++;
 	}
 }
 
 
 int main() {
+
+
 
 	MeasureTime mt{};
 
@@ -350,12 +400,12 @@ int main() {
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation.join();
 
-	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
-	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;
-	std::cout << "Average duration lapse omni matching: " << mt.get_avg_omni_matching() << " ms" << std::endl;
-	std::cout << "Average duration lapse common point computation: " << mt.get_avg_common_p() << " ms" << std::endl;
-	std::cout << "Average duration lapse pose estimation: " << mt.get_avg_pose_estimation() << " ms" << std::endl;
-	std::cout << "Average duration lapse fusion: " << mt.get_avg_fusion() << " ms" << std::endl;
+//	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
+//	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;
+//	std::cout << "Average duration lapse omni matching: " << mt.get_avg_omni_matching() << " ms" << std::endl;
+//	std::cout << "Average duration lapse common point computation: " << mt.get_avg_common_p() << " ms" << std::endl;
+//	std::cout << "Average duration lapse pose estimation: " << mt.get_avg_pose_estimation() << " ms" << std::endl;
+//	std::cout << "Average duration lapse fusion: " << mt.get_avg_fusion() << " ms" << std::endl;
 
 	return 0;
 

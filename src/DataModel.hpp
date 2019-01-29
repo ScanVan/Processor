@@ -27,7 +27,7 @@ public:
 	int imgNum = 0;
 
 	Omni(int imgNum) :
-			imgNum(imgNum) {
+			imgNum { imgNum } {
 	}
 
 	string idString() {
@@ -82,7 +82,7 @@ public:
 	}
 	;
 	string idString() {
-		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + imgs[2]->idString() + ")";
+		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}
 };
 

@@ -24,6 +24,208 @@
 #include "Mat_33.hpp"
 #include "Vec_Points.hpp"
 #include "Print_Data.hpp"
+#include <cmath>
+
+template <typename T>
+void ntuple_consistency (const std::vector<Vec_Points<T>> &p3d_liste,
+						 const std::vector<std::vector<T>> &sv_u_liste,
+						 T t_tol,
+						 const std::vector<std::vector<T>> &sv_e_liste,
+						 std::vector<Vec_Points<T>> &p3d_liste_dest,
+						 std::vector<std::vector<T>> &sv_u_liste_dest)
+// Inputs:
+// p3d_liste		: the list of features
+// sv_u_liste		: the list of radius of the features
+// t_tol			: the tolerance
+// Outputs:
+// p3d_liste_dest	: the filtered list of features
+// sv_u_liste_dest	: the filtered list of radius of the features
+{
+	// the number of spheres
+	size_t nb_sph { p3d_liste.size() }; // this is m
+	// the number of features
+	size_t nb_pts { p3d_liste[0].size() }; // this is n
+
+	// the mean values of the errors
+	std::vector<T> t_m { };
+	// calculation of the mean values
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		T m { std::accumulate(sv_e_liste[i].begin(), sv_e_liste[i].end(), 0.0) / sv_e_liste[i].size() };
+		t_m.push_back(m);
+	}
+
+	// the standard deviation of the error
+	std::vector<T> t_s { };
+	// calculation of the standard deviation
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		T var { 0.0 };
+		for (const auto & val : sv_e_liste[i]) {
+			var += pow(val - t_m[i], 2);
+		}
+		// check error to avoid division by 0
+		if (sv_e_liste[i].size() <= 1) {
+			throw(std::runtime_error("Size of the vector of errors is less or equal to 1"));
+		}
+		var /= (sv_e_liste[i].size() - 1);
+		t_s.push_back(sqrt(var) * t_tol);
+	}
+
+	// declare new vectors for the computation
+	std::vector<Vec_Points<T>> p3d_liste_new { };
+	std::vector<std::vector<T>> sv_u_liste_new { };
+
+	// initialize the new vectors with empty elements
+	Vec_Points<T> p3d { };
+	std::vector<T> v { };
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		p3d_liste_new.push_back(p3d);
+		sv_u_liste_new.push_back(v);
+	}
+
+	for (size_t i { 0 }; i < nb_pts; ++i) {
+
+		bool flag { true };
+		// check conditions for all the spheres
+		for (size_t j { 0 }; (j < nb_sph) && (flag == true); ++j) {
+			flag = sv_e_liste[j][i] <= t_s[j];
+		}
+
+		// if it passes all the filtering conditions copy the elements to the new vectors
+		if (flag) {
+			for (size_t j { 0 }; j < nb_sph; ++j) {
+				p3d_liste_new[j].push_back(p3d_liste[j][i]);
+				sv_u_liste_new[j].push_back(sv_u_liste[j][i]);
+			}
+		}
+	}
+
+	// copy the results to destination
+	p3d_liste_dest = p3d_liste_new;
+	sv_u_liste_dest = sv_u_liste_new;
+
+}
+
+template <typename T>
+void ntuple_filter (const std::vector<Vec_Points<T>> &p3d_liste,
+			     	const std::vector<std::vector<T>> &sv_u_liste,
+					T t_tol,
+					std::vector<Vec_Points<T>> &p3d_liste_dest,
+					std::vector<std::vector<T>> &sv_u_liste_dest)
+// Inputs:
+// p3d_liste 		: the list of features
+// sv_u_liste		: the list of radius of the features
+// t_tol			: the tolerance
+// Outputs:
+// p3d_liste_dest	: the filtered list of features
+// sv_u_liste_dest	: the filtered list of radius of the features
+{
+
+	// the number of spheres
+	size_t nb_sph { p3d_liste.size() }; // this is m
+	// the number of features
+	size_t nb_pts { p3d_liste[0].size() }; // this is n
+
+	// the mean values of the radius
+	std::vector<T> t_m { };
+	// calculation of the mean values
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		T m { std::accumulate(sv_u_liste[i].begin(), sv_u_liste[i].end(), 0.0) / sv_u_liste[i].size() };
+		t_m.push_back(m);
+	}
+
+	// the standard deviation of the radius
+	std::vector<T> t_s { };
+	// calculation of the standard deviation
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		T var { 0.0 };
+		for (const auto & val : sv_u_liste[i]) {
+			var += pow(val - t_m[i], 2);
+		}
+		// check error to avoid division by 0
+		if (sv_u_liste[i].size() <= 1) {
+			throw(std::runtime_error("Size of the vector of radius is less or equal to 1"));
+		}
+		var /= (sv_u_liste[i].size() - 1);
+		t_s.push_back(sqrt(var));
+	}
+
+	// declare new vectors for the computation
+	std::vector<Vec_Points<T>> p3d_liste_new { };
+	std::vector<std::vector<T>> sv_u_liste_new { };
+
+	// initialize the new vectors with empty elements
+	Vec_Points<T> p3d { };
+	std::vector<T> v { };
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		p3d_liste_new.push_back(p3d);
+		sv_u_liste_new.push_back(v);
+	}
+
+	for (size_t i { 0 }; i < nb_pts; ++i) {
+
+		bool flag { true };
+		// check conditions for all the spheres
+		for (size_t j { 0 }; (j < nb_sph) && (flag == true); ++j) {
+			flag = fabs(sv_u_liste[j][i] - t_m[j]) <= t_s[j] * t_tol;
+		}
+
+		// if it passes all the filtering conditions copy the elements to the new vectors
+		if (flag) {
+			for (size_t j { 0 }; j < nb_sph; ++j) {
+				p3d_liste_new[j].push_back(p3d_liste[j][i]);
+				sv_u_liste_new[j].push_back(sv_u_liste[j][i]);
+			}
+		}
+	}
+
+	// copy the results to destination
+	p3d_liste_dest = p3d_liste_new;
+	sv_u_liste_dest = sv_u_liste_new;
+}
+
+template <typename T>
+void optimal_intersection (const std::vector<Points<T>> &t_p, const std::vector<Points<T>> &t_d, Points<T> &t_inter)
+// Inputs:
+// t_p is number_of_spheres x points
+// t_d is number_of_spheres x direction
+// Output:
+// t_inter is a point
+{
+	// t_size contains the number of spheres
+	size_t t_size { t_p.size() };
+
+	// t_w is a 3x3 matrix initialized to all zeros
+	Mat_33<T> t_w { };
+
+	// t_v is a point filled with zeros
+	Points<T> t_v { };
+
+	// t_e is 3x3 identity matrix
+	Mat_33<T> t_e { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+
+	// accumulation loop
+	for (size_t t_i { 0 }; t_i < t_size; ++t_i) {
+
+		Mat_33<T> t_t { };
+
+		// t_t = t_e - t_d[t_i]' * t_d[t_i]
+		// t_d[t_i] is a point
+		t_t = t_e - t_d[t_i].outer(t_d[t_i]);
+
+		// accumulation of the w successive components
+		t_w = t_w + t_t;
+
+		// accumulation of the v successive components
+		// t_t * t_p[t_i] is a 3x3 matrix * point' and returns a point
+		t_v = t_v + (t_t * t_p[t_i]);
+	}
+
+	// computation of the intersection point
+
+	// t_w.inv() * t_v is a 3x3 matrix * point' and returns a point
+	t_inter = t_w.inv() * t_v;
+}
+
 
 template <typename T>
 inline void estimation_rot_trans (const std::vector<Vec_Points<T>> &p3d_liste, const std::vector<std::vector<T>> sv_u_liste,
@@ -168,7 +370,7 @@ inline std::vector<Points<T>> azim_determination(std::vector<Points<T>> &azim_li
 
 
 template<typename T>
-inline void estimation_rayons(const std::vector<Vec_Points<T>> &p3d_liste, std::vector<std::vector<T>> &sv_u_liste, const std::vector<Mat_33<T>> &sv_r_liste,
+inline void estimation_rayons_old(const std::vector<Vec_Points<T>> &p3d_liste, std::vector<std::vector<T>> &sv_u_liste, const std::vector<Mat_33<T>> &sv_r_liste,
 		const std::vector<Points<T>> &sv_t_liste, std::vector<T> &sv_e_liste) {
 // Takes as input p3d_liste, sv_u_liste, sv_r_liste and sv_t_liste
 // and generates as output sv_u_liste and sv_e_liste
@@ -236,6 +438,127 @@ inline void estimation_rayons(const std::vector<Vec_Points<T>> &p3d_liste, std::
 	}
 }
 
+template<typename T>
+inline T iteration_error(const std::vector<std::vector<T>> &sv_e_liste,
+						 const std::vector<Points<T>> &est_trans) {
+// Input:
+// features_error		: sv_e_liste, m x n single-value
+// estimated translation: est_trans, (m - 1) x Points<T> (vector)
+// m is the number of spheres
+// n is the number of features
+// Output:
+// computed error		: a single floating-point value
+
+	// assuming that sv_liste has the correct size for the number of spheres and number of features
+	size_t nb_sph { sv_e_liste.size() }; // this is m
+
+	std::vector<T> max_radius_per_sphere { };
+	T max_radius_error { };
+	for (size_t j{0}; j < nb_sph; ++j) {
+		// search the max element of the vector for each sphere
+		auto maxe = std::max_element(sv_e_liste[j].begin(), sv_e_liste[j].end());
+		// populate the vector containing the max element per sphere
+		max_radius_per_sphere.push_back(*maxe);
+	}
+	// search the max element of the max element per sphere
+	auto max_t = std::max_element(max_radius_per_sphere.begin(), max_radius_per_sphere.end());
+	max_radius_error = *max_t;
+
+	std::vector<T> min_trans_vec { };
+	T min_translation { };
+	// Calculates the norm of the translation vectors and stores it in a std::vector
+	for (size_t j{0}; j < nb_sph-1; ++j) {
+		min_trans_vec.push_back(est_trans[j].norm());
+	}
+	// searches the min element of the vector of norms of translations
+	auto min_t = std::min_element(min_trans_vec.begin(), min_trans_vec.end());
+	min_translation = *min_t;
+
+	return max_radius_error/min_translation;
+
+}
+
+template<typename T>
+inline void estimation_rayons(const std::vector<Vec_Points<T>> &p3d_liste,
+							  std::vector<std::vector<T>> &sv_u_liste,
+							  const std::vector<Mat_33<T>> &sv_r_liste,
+							  const std::vector<Points<T>> &sv_t_liste,
+							  std::vector<std::vector<T>> &sv_e_liste) {
+// Input:
+// features directions  : p3d_liste, m x Vec_Points (vector of n Points)
+// estimated rotation   : sv_r_liste, (m-1) x Mat_33
+// estimated translation: sv_t_liste, (m-1) x Points
+// m is the number of spheres
+// n is the number of features
+// Output:
+// computed radius      : sv_u_liste, m x n single-value
+// computed errors		: sv_e_liste, m x n single-value
+
+	size_t nb_sph { p3d_liste.size() }; // this is m
+	size_t nb_pts { p3d_liste[0].size() }; // this is n
+
+	// center of all m spheres in the frame of the first one
+	// it contains the sphere centers
+	std::vector<Points<T>> center_liste { };
+
+	// Initialize center_liste
+	if (center_liste.size() < nb_sph) {
+		Points<T> p {};
+		for (size_t i{ center_liste.size() }; i < nb_sph; ++i ) {
+			center_liste.push_back(p);
+		}
+	}
+
+	centers_determination(sv_r_liste, sv_t_liste, center_liste);
+
+	// Initialize sv_e_liste
+	// creates a null vector of size equal to the number of features
+	std::vector<T> nullvec (nb_pts, 0);
+	if (sv_e_liste.size() < nb_sph) {
+		for (size_t i { sv_e_liste.size() }; i < nb_sph; ++i) {
+			sv_e_liste.push_back(nullvec);
+		}
+	} else {
+		// if sv_e_liste.size() is > nb_sph, reset the size to nb_sph
+		sv_e_liste = { };
+		for (size_t i { 0 }; i < nb_sph; ++i) {
+			sv_e_liste.push_back(nullvec);
+		}
+	}
+
+	// Loop over the n features
+	for (size_t j { 0 }; j < nb_pts; ++j) {
+
+		// it stores the current feature direction on each of the m spheres
+		std::vector<Points<T>> azim_liste { };
+
+		for (size_t i { 0 }; i < nb_sph; ++i) {
+			azim_liste.push_back(p3d_liste[i][j]);
+		}
+
+		azim_determination(azim_liste, sv_r_liste, sv_t_liste);
+
+		Points<T> inter { };
+
+		// Calculates the optimal intersection point inter passing the current feature centers and directions
+		optimal_intersection(center_liste, azim_liste, inter);
+
+		// The new radius of the feature
+		for (size_t k{ 0 }; k < nb_sph; ++k) {
+			// Using the optimal intersection (inter), the new radius is computed
+			sv_u_liste[k][j] = azim_liste[k] * (inter - center_liste[k]);
+		}
+
+
+		for (size_t k{ 0 }; k < nb_sph; ++k) {
+			// the error is computed
+			sv_e_liste[k][j] = (center_liste[k] + azim_liste[k] * sv_u_liste[k][j] - inter).norm();
+		}
+
+	}
+
+}
+
 template <typename T>
 void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 			     const std::vector<std::vector<T>> &sv_u_liste,
@@ -295,7 +618,7 @@ void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 
 
 template <typename T>
-void pose_estimation (const std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
+void pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 					  Vec_Points<T> &sv_scene,
 					  std::vector<Points<T>> &positions) {
 
@@ -305,7 +628,7 @@ void pose_estimation (const std::vector<Vec_Points<T>> &p3d_liste, const T error
 	std::vector<std::vector<T>> sv_u_liste { };
 	std::vector<Points<T>> sv_t_liste { };
 	std::vector<Mat_33<T>> sv_r_liste { };
-	std::vector<T> sv_e_liste { };
+	std::vector<std::vector<T>> sv_e_liste { };
 
 	// Initialize sv_u_liste
 	std::vector<T> ones(nb_pts, 1);
@@ -325,42 +648,53 @@ void pose_estimation (const std::vector<Vec_Points<T>> &p3d_liste, const T error
 		sv_t_liste.push_back(p);
 	}
 
-	T sv_e_old { 0 };
-	T sv_e_norm { 1 };
-
-	T diff_error { sv_e_norm - sv_e_old };
+	T sv_e_old { -1. };
 
 	int counter {0};
 
-	while (diff_error > error_max) {
+	// condition to exit the loop
+	bool loop_flag { true };
+
+	while (loop_flag) {
 
 		counter ++;
-
-		sv_e_old = sv_e_norm;
 
 		estimation_rot_trans(p3d_liste, sv_u_liste, sv_r_liste, sv_t_liste);
 
 		estimation_rayons(p3d_liste, sv_u_liste, sv_r_liste, sv_t_liste, sv_e_liste);
 
-		T sv_t_norm { 0 };
-		for (size_t i { 0 }; i < sv_t_liste.size(); ++i) {
-			sv_t_norm += (sv_t_liste[i].norm());
+		T sv_e_cur = iteration_error(sv_e_liste, sv_t_liste);
+
+		if (std::abs(sv_e_cur - sv_e_old) < error_max) {
+			// stop condition raised, exit while loop
+			loop_flag = false;
+		}
+		else {
+			// push error current value
+			sv_e_old = sv_e_cur;
+
+			// check error consistency
+			ntuple_consistency (p3d_liste, sv_u_liste, 5.0, sv_e_liste, p3d_liste, sv_u_liste);
+
+			// filter out non convergent radius
+			ntuple_filter (p3d_liste, sv_u_liste, 5.0, p3d_liste, sv_u_liste);
+
 		}
 
-		T max_num { sv_e_liste[0] };
-		for (size_t i { 1 }; i < sv_e_liste.size(); ++i) {
-			if (sv_e_liste[i] > max_num)
-				max_num = sv_e_liste[i];
-		}
-
-		sv_e_norm = sv_e_liste.size() * max_num / sv_t_norm;
-		T diff_temp { sv_e_norm - sv_e_old };
-		diff_error = diff_temp > 0 ? diff_temp : -diff_temp;
-
-		//std::cout << counter << " " << sv_e_norm << std::endl;
+		std::cout << "Iteration " << std::setfill('0') << std::setw(3) << counter << " : t_norm : ";
+		std::cout << std::fixed << std::setprecision(6) << sv_t_liste[0].norm() << ", " << sv_t_liste[1].norm() << " : with " << p3d_liste[0].size()
+				<< " features : ";
+		std::cout << " mean radius : (" << std::accumulate(sv_u_liste[0].begin(), sv_u_liste[0].end(), 0.0) / sv_u_liste[0].size() << " "
+				<< std::accumulate(sv_u_liste[1].begin(), sv_u_liste[1].end(), 0.0) / sv_u_liste[1].size() << " "
+				<< std::accumulate(sv_u_liste[2].begin(), sv_u_liste[2].end(), 0.0) / sv_u_liste[2].size() << ")" << std::endl;
 
 	}
 
+	std::cout << sv_r_liste[0] << std::endl;
+	std::cout << sv_r_liste[1] << std::endl;
+
+	std::cout << sv_t_liste[0] << std::endl;
+	std::cout << sv_t_liste[1] << std::endl;
 
 	// Initialize positions
 	if (positions.size() < nb_sph) {
