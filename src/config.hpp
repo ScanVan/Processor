@@ -11,6 +11,17 @@
 //#define DISPLAY_TRIPLET_MATCHES
 //#define DISPLAY_TRIPLET_MATCHES_INDIVIDUAL
 
+// Folder names for the data
+// input main folder
+const std::string inputFolder {"data_in"};
+// input folder where the input images are located
+const std::string inputDataSet {"0_dataset"};
+// input folder where the mask is located
+const std::string inputMask {"1_maksk"};
 
+// output main folder
+const std::string outputFolder {"data_out"};
+// output folder where the features for each image is written
+const std::string outputFeatures {"1_features"};
 
 #endif /* SRC_CONFIG_HPP_ */

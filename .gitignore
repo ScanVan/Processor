@@ -35,6 +35,8 @@
 
 # Output data
 /resources/
+/data_in/
+/data_out/
 
 # Input data
 /data/

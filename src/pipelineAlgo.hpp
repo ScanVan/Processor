@@ -21,21 +21,11 @@
 #include "DataModel.hpp"
 #include "config.hpp"
 
-
-using namespace std;
-using namespace cv;
-
-
-shared_ptr<OmniWithFeatures> extractFeatures(shared_ptr<Omni> omni, shared_ptr<Mat> mask);
+std::shared_ptr<OmniWithFeatures> extractFeatures(std::shared_ptr<Omni> omni, std::shared_ptr<Mat> mask);
 std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures> im1, std::shared_ptr<OmniWithFeatures> im2);
-shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2);
-shared_ptr<Model> poseEstimation (shared_ptr<TripletsWithMatches> t1);
+std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2);
+std::shared_ptr<Model> poseEstimation (std::shared_ptr<TripletsWithMatches> t1);
 void fusionModel (Model *m1, Model *m2);
-
-
-//void ProcPose();
-
-
 
 
 

@@ -21,7 +21,7 @@ void writePly(string file, vector<ModelFeature> &features){
 	s << "property uchar green " << endl;
 	s << "property uchar blue " << endl;
 	s << "element face 0 " << endl;
-	s << "property list uint8 int32 vertex_index { vertex_indices is a list of ints }" << endl;
+	s << "property list uint8 int32 vertex_index" << endl;
 	s << "end_header " << endl;
 
 	for(auto f : features){

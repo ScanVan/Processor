@@ -27,6 +27,7 @@
 #include "Estimation.hpp"
 #include "pipelineAlgo.hpp"
 #include "Cartesian2Spherical.hpp"
+#include "config.hpp"
 
 using namespace std;
 using namespace cv;
@@ -82,114 +83,65 @@ public:
 		return total_duration_omni_matching.count() / number_omni_matching * 1000.0;
 	}
 
-
 };
-
-
 
 //=========================================================================================================
 
 void generatePairImages (MeasureTime *mt) {
+// It reads the images from file and pushes to the queue for the feature extraction
 
+	// list of file names of the input images
 	std::vector<std::string> file_list{};
-	for (auto& p : fs::directory_iterator("data"))
+
+	// read the contents of the directory where the images are located
+	fs::path pt = fs::u8path(inputFolder + "/" + inputDataSet);
+	for (auto& p : fs::directory_iterator(pt))
 		file_list.push_back(p.path().u8string());
 
+	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
 
-	int img_counter { 0 };
+	// counter for the image number
+	int img_counter { 1 };
 
 	for (auto &file: file_list) {
 
+		// reads the image from the file
 		cv::Mat input_image { };
 		input_image = imread(file, cv::IMREAD_UNCHANGED);
-
 		if (!input_image.data) {
 			throw std::runtime_error("Could not load the input image");
 		}
 
-		std::cout << file << '\n';
+		// removes the folder name that precedes the path
+		std::string fileName = file.substr(file.find_last_of("/", std::string::npos) + 1, std::string::npos);
+		//std::cout << fileName << '\n';
 
-		std::shared_ptr<Omni> p1(new Omni { img_counter });
-
-		p1->img = input_image;
+		// creates a shared pointer from an anonymous object initialized with the image
+		std::shared_ptr<Omni> p1(new Omni { input_image, img_counter, fileName });
 
 		// simulates the delay of image acquisition
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		// push to the queue
 		imgProcQueue.push(p1);
 
 		std::stringstream ss { };
 		ss << "=========================" << std::endl
-		   << "Send pair images " << p1->idString() << std::endl
+		   << "Send pair images " << p1->getImgNum() << std::endl
 		   << "=========================" << std::endl;
 		print(ss.str());
 
+//		namedWindow("Display window", WINDOW_NORMAL);
+//		imshow ("Display window", p1->getImage());
+//
+//
+//		waitKey(0);
 
-/*
-		namedWindow("Display window", WINDOW_NORMAL);
-		imshow ("Display window", input_image);
-
-
-		waitKey(0);
-
-*/
 		img_counter++;
 	}
 
-
-/*	const int staticImagesCount { 6 };
-
-	cv::Mat staticImages[staticImagesCount] { };
-
-	for (int i { 0 }; i < staticImagesCount; ++i) {
-		std::stringstream ss { };
-		ss << "./resources/0_" << (i + 1) << ".bmp";
-		staticImages[i] = imread(ss.str(), IMREAD_UNCHANGED);
-		cout << ss.str() << endl;
-	}
-
-	//int i { 0 };
-
-	std::chrono::high_resolution_clock::time_point t1 { };
-	std::chrono::high_resolution_clock::time_point t2 { };
-
-
-	for (int i { 0 }; i < 40; ++i) {
-
-		t1 = std::chrono::high_resolution_clock::now();
-
-		//-----------------------------------------------------
-		std::shared_ptr<Omni> p1(new Omni { i });
-
-		// This is to make the index increment and decrement in a saw-like fashion
-		// staticImageId will take values 0, 1, 2, 3, 4, 5, 4, 3, 2, 1, 0, 1, 2, 3, etc
-		int staticImageId { i % (staticImagesCount * 2 - 1 - 1) };
-		if (staticImageId >= staticImagesCount)
-			staticImageId = staticImagesCount * 2 - 1 - staticImageId - 1;
-
-		p1->img = staticImages[staticImageId];
-
-		// simulates the delay of image acquisition
-		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-		// push to the queue
-		imgProcQueue.push(p1);
-
-		std::stringstream ss { };
-		ss << "=========================" << std::endl
-		   << "Send pair images " << p1->idString() << std::endl
-		   << "=========================" << std::endl;
-		print(ss.str());
-		//-----------------------------------------------------
-
-		t2 = std::chrono::high_resolution_clock::now();
-		mt->total_duration_gen_pairs += t2 - t1;
-		mt->number_gen_pairs++;
-
-		//++i;
-	} */
+	// triggers the end of the program
 	mt->terminateProgram = true;
 }
 
@@ -201,27 +153,9 @@ void procFeatures (MeasureTime *mt) {
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
-	auto mask = make_shared<Mat>(imread("data/mask0.png", IMREAD_GRAYSCALE));
+	auto mask = make_shared<Mat>(imread(inputFolder + "/" + inputMask, IMREAD_GRAYSCALE));
 
-//	auto filterPath = vector<const char*>({"resources/0_0.bmp"});
-//  vector<KeyPoint> filtersKpts; //Keypoints extracted from img.
-//    Mat filtersDesc;
-//	for(auto ip : filterPath){
-//		auto filterImg = imread("resources/mire.bmp", IMREAD_UNCHANGED);
-//	    Ptr<AKAZE> akaze = AKAZE::create(
-//			AKAZE::DESCRIPTOR_MLDB,
-//			0,  3,
-//			0.0001f,  4,
-//			4, KAZE::DIFF_PM_G2
-//		);
-//	    akaze->detectAndCompute(filterImg, Mat(), filtersKpts, filtersDesc);
-//	}
-
-	std::chrono::high_resolution_clock::time_point t1 { };
-	std::chrono::high_resolution_clock::time_point t2 { };
-
-
-	//for (;;) {
+	// loop over while not terminate or the queue is not empty
 	while ((!mt->terminateProgram)||(!imgProcQueue.empty())) {
 
 		std::shared_ptr<Omni> receivedPairImages { };
@@ -229,53 +163,61 @@ void procFeatures (MeasureTime *mt) {
 
 		std::stringstream ss {};
 		ss << "=========================" << std::endl
-		   << "Received pair images " << receivedPairImages->idString() << std::endl
+		   << "Received pair images " << receivedPairImages->getImgName() << std::endl
 		   << "=========================" << std::endl;
 		print (ss.str());
 
-		t1 = std::chrono::high_resolution_clock::now();
-
 		//-----------------------------------------------------
-		auto featuredImages = extractFeatures(receivedPairImages, mask);
+		std::shared_ptr<OmniWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
 		//-----------------------------------------------------
-		t2 = std::chrono::high_resolution_clock::now();
-		mt->total_duration_feature_extract += t2 - t1;
-		mt->number_feature_extract++;
 
+		// write into file the features
+		std::string fb = (featuredImages->getImgName()).substr(0, (featuredImages->getImgName()).find_first_of("."));
+		std::string pathOutputFeature = outputFolder + "/" + outputFeatures + "/" + fb;
 
-		// v is a sort of queue where the extracted features are stored
+		// check if folder to write the features exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputFeatures)) {
+			fs::create_directory(outputFolder + "/" + outputFeatures);
+		}
+
+		// open the file to write the features
+		std::ofstream outputFile { pathOutputFeature };
+		// go over all the features extracted and write them into the file
+		for (const auto kp : featuredImages->getKeyPoint()) {
+			outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
+		}
+		outputFile.close();
+
+		/*// v is a sort of queue where the extracted features are stored
 		v.push_front(featuredImages);
 		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
 		// and the last set of features is discarded
 		if (v.size() == 2) {
-			t1 = std::chrono::high_resolution_clock::now();
+
 			//-----------------------------------------------------
 			lp.push_front(omniMatching(v[1], v[0]));
 			//-----------------------------------------------------
-			t2 = std::chrono::high_resolution_clock::now();
-			mt->total_duration_omni_matching += t2 - t1;
-			mt->number_omni_matching++;
+
 			v.pop_back();
 		}
 
 		// lp is a sort of queue where the matches are stored
 		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
-			t1 = std::chrono::high_resolution_clock::now();
+
 			//-----------------------------------------------------
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			//-----------------------------------------------------
-			t2 = std::chrono::high_resolution_clock::now();
-			mt->total_duration_common_p += t2 - t1;
-			mt->number_common_p++;
+
 			lp.pop_back();
 			// push the triplet to the thread-safe queue and send it for pose estimation
 			tripletsProcQueue.push(p1);
-		}
+		}*/
 	}
 }
 
 //=========================================================================================================
+/*
 
 void ProcPose (MeasureTime *mt) {
 
@@ -298,8 +240,8 @@ void ProcPose (MeasureTime *mt) {
 		std::vector<Vec_Points<double>> p3d_liste;
 
 		// width and height of the images
-		auto width = receivedTripletsImages->imgs[0]->omni->img.cols;
-		auto height = receivedTripletsImages->imgs[0]->omni->img.rows;
+		auto width = (receivedTripletsImages->imgs[0]->omni->getImage()).cols;
+		auto height = (receivedTripletsImages->imgs[0]->omni->getImage()).rows;
 
 		for (int idx { 0 }; idx < 3; ++idx) {
 			Vec_Points<double> list_matches { };
@@ -308,7 +250,7 @@ void ProcPose (MeasureTime *mt) {
 				// gets the positions of the features
 				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
 
-				/* convert x and y to spherical */
+				 convert x and y to spherical
 				Points<double> p = convertCartesian2Spherical (static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
 
 				list_matches.push_back(p);
@@ -352,8 +294,8 @@ void ProcPose (MeasureTime *mt) {
 		RGB888 modelColor = RGB888(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
-				continue;*/
+			if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
+				continue;
 			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
@@ -384,6 +326,7 @@ void ProcPose (MeasureTime *mt) {
 		counter++;
 	}
 }
+*/
 
 
 int main() {
@@ -394,11 +337,11 @@ int main() {
 
 	std::thread GenPairs (generatePairImages, &mt);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt);
-	std::thread ProcessPoseEstimation (ProcPose, &mt);
+	//std::thread ProcessPoseEstimation (ProcPose, &mt);
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
-	ProcessPoseEstimation.join();
+	//ProcessPoseEstimation.join();
 
 //	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
 //	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;

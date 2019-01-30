@@ -6,7 +6,7 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 	ss << "=========================" << std::endl << "Common Points Computation " << p1->idString() << " " << p2->idString() <<  std::endl << "=========================" << std::endl;
 	print (ss.str());
 
-	if (p1->imgs[1]->omni->imgNum != p2->imgs[0]->omni->imgNum) {
+	if (p1->imgs[1]->getOmni()->getImgNum() != p2->imgs[0]->getOmni()->getImgNum()) {
 		throw std::runtime_error ("Error in indexes in CommonPointComputation");
 	}
 

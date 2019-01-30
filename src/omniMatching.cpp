@@ -29,11 +29,11 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<OmniWithFeatures>
 #ifdef USE_GMS_FILTER
     vector<DMatch> matches_all;
     BFMatcher matcher(NORM_HAMMING);
-	matcher.match(im1->desc, im2->desc, matches_all);
+	matcher.match(im1->getDesc(), im2->getDesc(), matches_all);
 
 	// GMS filter
 	std::vector<bool> vbInliers;
-	gms_matcher gms(im1->kpts, im1->omni->img.size(), im2->kpts, im2->omni->img.size(), matches_all);
+	gms_matcher gms(im1->getKeyPoint(), (im1->getOmni()->getImage()).size(), im2->getKeyPoint(), (im2->getOmni()->getImage()).size(), matches_all);
 	int num_inliers = gms.GetInlierMask(vbInliers, false, false);
 	cout << "Get total " << num_inliers << " matches." << endl;
 
