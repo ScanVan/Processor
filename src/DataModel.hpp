@@ -21,7 +21,7 @@
 using namespace cv;
 using namespace std;
 
-class Omni {
+class Equirectangular {
 // It stores the equirectangular image together with
 // the file name of the image
 // and the image number (counter as it is pushed to the queue)
@@ -30,28 +30,28 @@ private:
 	std::string imgName { };
 	int imgNum { };
 public:
-	Omni() {
+	Equirectangular() {
 		p_img = new cv::Mat { };
 	}
-	Omni(const cv::Mat &img, int imgNum, std::string &imgName) {
+	Equirectangular(const cv::Mat &img, int imgNum, std::string &imgName) {
 		p_img = new cv::Mat { img };
 		this->imgNum = imgNum;
-		this->imgName = imgName;
+		this->imgName = imgName.substr(0, imgName.find_first_of("."));
 	}
-	~Omni() {
+	~Equirectangular() {
 		delete p_img;
 	}
-	Omni(const Omni &a) {
+	Equirectangular(const Equirectangular &a) {
 		p_img = new cv::Mat {*(a.p_img)};
 		imgName = a.imgName;
 		imgNum = a.imgNum;
 	}
-	Omni(Omni &&a) {
+	Equirectangular(Equirectangular &&a) {
 		p_img = a.p_img;
 		a.p_img = nullptr;
 	}
 	void setImgName (const std::string name) {
-		imgName = name;
+		imgName = name.substr(0, name.find_first_of("."));
 	}
 	void setImgNum (const int number) {
 		imgNum = number;
@@ -65,7 +65,7 @@ public:
 	int getImgNum() {
 		return imgNum;
 	}
-	Omni & operator=(const Omni &a) {
+	Equirectangular & operator=(const Equirectangular &a) {
 		if (this != &a) {
 			delete p_img;
 			p_img = new cv::Mat { *(a.p_img) };
@@ -74,7 +74,7 @@ public:
 		}
 		return *this;
 	}
-	Omni & operator=(Omni &&a) {
+	Equirectangular & operator=(Equirectangular &&a) {
 		if (this != &a) {
 			delete p_img;
 			p_img = a.p_img;
@@ -90,27 +90,27 @@ public:
 };
 
 //Omnidirectional image, img is composed by the two camera pictures
-class OmniWithFeatures {
+class EquirectangularWithFeatures {
 private:
-	std::shared_ptr<Omni> omni;
+	std::shared_ptr<Equirectangular> equi;
 	std::vector<KeyPoint> kpts; //Keypoints extracted from img.
 	cv::Mat desc; // descriptors
 public:
-	OmniWithFeatures() {}
-	OmniWithFeatures(shared_ptr<Omni> omni) :
-			omni(omni) {
+	EquirectangularWithFeatures() {}
+	EquirectangularWithFeatures(shared_ptr<Equirectangular> sptr_equi) :
+			equi(sptr_equi) {
 	}
-	std::shared_ptr<Omni> & getOmni() {
-		return omni;
+	std::shared_ptr<Equirectangular> & getOmni() {
+		return equi;
 	}
-	std::vector<KeyPoint> & getKeyPoint() {
+	std::vector<KeyPoint> & getKeyPoints() {
 		return kpts;
 	}
 	cv::Mat & getDesc() {
 		return desc;
 	}
-	void setOmni (const std::shared_ptr<Omni> &p) {
-		omni = p;
+	void setOmni (const std::shared_ptr<Equirectangular> &p) {
+		equi = p;
 	}
 	void setKeyPoint(const std::vector<KeyPoint> & k) {
 		kpts = k;
@@ -119,24 +119,54 @@ public:
 		desc = d;
 	}
 	std::string & getImgName() {
-		return omni->getImgName();
+		return equi->getImgName();
 	}
-	string idString() {
-		return omni->idString();
+	std::string idString() {
+		return equi->idString();
 	}
 };
 
 class PairWithMatches {
+private:
+	std::vector<cv::DMatch> matches;
+	std::shared_ptr<EquirectangularWithFeatures> imgs[2];
 public:
-	vector<DMatch> matches;
-	std::shared_ptr<OmniWithFeatures> imgs[2];
-
 	PairWithMatches() {
 	}
-	PairWithMatches(std::shared_ptr<OmniWithFeatures> img1, std::shared_ptr<OmniWithFeatures> img2) :
+	PairWithMatches(std::shared_ptr<EquirectangularWithFeatures> img1, std::shared_ptr<EquirectangularWithFeatures> img2) :
 			imgs( { img1, img2 }) {
 	}
-	;
+	void setMatches (const std::vector<cv::DMatch> &m) {
+		matches = m;
+	}
+	std::vector<cv::DMatch> & getMatches () {
+		return matches;
+	}
+	void setImages (const std::shared_ptr<EquirectangularWithFeatures> &im1, const std::shared_ptr<EquirectangularWithFeatures> &im2) {
+		imgs[0] = im1;
+		imgs[1] = im2;
+	}
+	std::shared_ptr<EquirectangularWithFeatures> & getImage1 () {
+		return imgs[0];
+	}
+	std::shared_ptr<EquirectangularWithFeatures> & getImage2() {
+		return imgs[1];
+	}
+	std::vector<KeyPoint> & getKeyPoints1() {
+		return imgs[0]->getKeyPoints();
+	}
+	std::vector<KeyPoint> & getKeyPoints2() {
+		return imgs[1]->getKeyPoints();
+	}
+	std::string getPairImageName() {
+		return imgs[0]->getImgName() + "_" + imgs[1]->getImgName();
+	}
+	int getImageNumber1() {
+		return imgs[0]->getOmni()->getImgNum();
+	}
+	int getImageNumber2() {
+		return imgs[1]->getOmni()->getImgNum();
+	}
 	string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + ")";
 	}
@@ -144,13 +174,13 @@ public:
 
 class TripletsWithMatches {
 public:
-	std::shared_ptr<OmniWithFeatures> imgs[3];
+	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
 	vector<vector<int>> matches;
 
 	TripletsWithMatches() {
 	}
 	;
-	TripletsWithMatches(std::shared_ptr<OmniWithFeatures> img0, std::shared_ptr<OmniWithFeatures> img1, std::shared_ptr<OmniWithFeatures> img2) {
+	TripletsWithMatches(std::shared_ptr<EquirectangularWithFeatures> img0, std::shared_ptr<EquirectangularWithFeatures> img1, std::shared_ptr<EquirectangularWithFeatures> img2) {
 		this->imgs[0] = img0;
 		this->imgs[1] = img1;
 		this->imgs[2] = img2;

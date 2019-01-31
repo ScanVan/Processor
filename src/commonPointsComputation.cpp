@@ -2,35 +2,36 @@
 
 shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2) {
 
+	// Print out message on the console
 	std::stringstream ss {};
 	ss << "=========================" << std::endl << "Common Points Computation " << p1->idString() << " " << p2->idString() <<  std::endl << "=========================" << std::endl;
 	print (ss.str());
 
-	if (p1->imgs[1]->getOmni()->getImgNum() != p2->imgs[0]->getOmni()->getImgNum()) {
+	// Check if the are consecutive
+	if (p1->getImageNumber1() != p2->getImageNumber2()) {
 		throw std::runtime_error ("Error in indexes in CommonPointComputation");
 	}
 
-	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->imgs[0], p1->imgs[1], p2->imgs[1]}));
+	shared_ptr<TripletsWithMatches> t1 (new TripletsWithMatches({p1->getImage1(), p1->getImage2(), p2->getImage2()}));
 	//DEBUG_PTR(t1);
 	const int pairsCount = 2;
 	PairWithMatches *p[pairsCount];
 	p[0] = p1.get();
 	p[1] = p2.get();
 
-
-	for(size_t p0MatchId = 0;p0MatchId < p[0]->matches.size();p0MatchId++){
+	for (size_t p0MatchId = 0; p0MatchId < p[0]->getMatches().size(); p0MatchId++) {
 		bool ok = true;
 		int matchIds[pairsCount+1];
-		int nextQueryIdx = p[0]->matches[p0MatchId].trainIdx;
+		int nextQueryIdx = p[0]->getMatches()[p0MatchId].trainIdx;
 
-		matchIds[0] = p[0]->matches[p0MatchId].queryIdx;
+		matchIds[0] = p[0]->getMatches()[p0MatchId].queryIdx;
 		matchIds[1] = nextQueryIdx;
 		for(size_t pxId = 1;pxId < pairsCount;pxId++){
 			PairWithMatches *px = p[pxId];
 			ok = false;
-			for(size_t pxMatchId = 0;pxMatchId < px->matches.size();pxMatchId++){
-				if(px->matches[pxMatchId].queryIdx == nextQueryIdx){
-					nextQueryIdx = px->matches[pxMatchId].trainIdx;
+			for(size_t pxMatchId = 0;pxMatchId < px->getMatches().size();pxMatchId++){
+				if(px->getMatches()[pxMatchId].queryIdx == nextQueryIdx){
+					nextQueryIdx = px->getMatches()[pxMatchId].trainIdx;
 					matchIds[pxId+1] = nextQueryIdx;
 					ok = true;
 					break;

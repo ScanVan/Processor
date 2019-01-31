@@ -34,7 +34,7 @@ using namespace cv;
 namespace fs = std::experimental::filesystem;
 
 // Thread-safe queue for communication between the generation of the images and the feature extraction
-ScanVan::thread_safe_queue<Omni> imgProcQueue {};
+ScanVan::thread_safe_queue<Equirectangular> imgProcQueue {};
 
 // Thread-safe queue for communication between the feature extraction and pose estimation
 ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
@@ -118,7 +118,7 @@ void generatePairImages (MeasureTime *mt) {
 		//std::cout << fileName << '\n';
 
 		// creates a shared pointer from an anonymous object initialized with the image
-		std::shared_ptr<Omni> p1(new Omni { input_image, img_counter, fileName });
+		std::shared_ptr<Equirectangular> p1(new Equirectangular { input_image, img_counter, fileName });
 
 		// simulates the delay of image acquisition
 		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
@@ -149,7 +149,7 @@ void generatePairImages (MeasureTime *mt) {
 
 void procFeatures (MeasureTime *mt) {
 
-	std::deque<std::shared_ptr<OmniWithFeatures>> v { };
+	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
@@ -158,56 +158,82 @@ void procFeatures (MeasureTime *mt) {
 	// loop over while not terminate or the queue is not empty
 	while ((!mt->terminateProgram)||(!imgProcQueue.empty())) {
 
-		std::shared_ptr<Omni> receivedPairImages { };
+		std::shared_ptr<Equirectangular> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
 
 		std::stringstream ss {};
 		ss << "=========================" << std::endl
-		   << "Received pair images " << receivedPairImages->getImgName() << std::endl
+		   << "Received equirectangular image " << receivedPairImages->getImgName() << std::endl
 		   << "=========================" << std::endl;
 		print (ss.str());
 
-		//-----------------------------------------------------
-		std::shared_ptr<OmniWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
-		//-----------------------------------------------------
+		////////////////////////////////////////////////////////////////////////////////////////////////////////
+		std::shared_ptr<EquirectangularWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
+		////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 		// write into file the features
-		std::string fb = (featuredImages->getImgName()).substr(0, (featuredImages->getImgName()).find_first_of("."));
-		std::string pathOutputFeature = outputFolder + "/" + outputFeatures + "/" + fb;
-
 		// check if folder to write the features exists, if not create it
 		if (!fs::exists(outputFolder + "/" + outputFeatures)) {
 			fs::create_directory(outputFolder + "/" + outputFeatures);
 		}
 
+		std::string pathOutputFeature = outputFolder + "/" + outputFeatures + "/" + featuredImages->getImgName();
+
+		// write features extracted for each image into files
 		// open the file to write the features
 		std::ofstream outputFile { pathOutputFeature };
 		// go over all the features extracted and write them into the file
-		for (const auto kp : featuredImages->getKeyPoint()) {
+		for (const auto kp : featuredImages->getKeyPoints()) {
 			outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
 		}
 		outputFile.close();
 
-		/*// v is a sort of queue where the extracted features are stored
+		// v is a sort of queue where the extracted features are stored
 		v.push_front(featuredImages);
 		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
 		// and the last set of features is discarded
 		if (v.size() == 2) {
 
-			//-----------------------------------------------------
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			lp.push_front(omniMatching(v[1], v[0]));
-			//-----------------------------------------------------
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+			// write the matched features for each pair of images
+			// check if folder to write the matches exists, if not create it
+			if (!fs::exists(outputFolder + "/" + outputMatches)) {
+				fs::create_directory(outputFolder + "/" + outputMatches);
+			}
+
+			std::string pathOutputMatches = outputFolder + "/" + outputMatches + "/" + lp.front()->getPairImageName();
+			// open the file to write the matches
+			std::ofstream outputFileMatches { pathOutputMatches };
+
+			// Keypoints of the first image
+			std::vector<KeyPoint> kp1 = lp.front()->getKeyPoints1();
+			// Keypoints of the second image
+			std::vector<KeyPoint> kp2 = lp.front()->getKeyPoints2();
+
+			// loop over the vector of matches
+			for (const auto &m: lp.front()->getMatches()) {
+
+				// m.queryIdx is the index of the Keypoints on the first image
+				// m.trainIdx is the index of the Keypoints on the second image
+				outputFileMatches << std::setprecision(15) << kp1[m.queryIdx].pt.x << " " << kp1[m.queryIdx].pt.y << " "  <<
+						 kp2[m.trainIdx].pt.x << " " << kp2[m.trainIdx].pt.y << std::endl;
+			}
+			outputFileMatches.close();
 
 			v.pop_back();
 		}
 
+		/*
 		// lp is a sort of queue where the matches are stored
 		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
 
-			//-----------------------------------------------------
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
-			//-----------------------------------------------------
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 			lp.pop_back();
 			// push the triplet to the thread-safe queue and send it for pose estimation
