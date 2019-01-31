@@ -45,7 +45,9 @@ class MeasureTime {
 
 public:
 
-	bool terminateProgram = false;
+	bool terminateGenPairs = false;
+	bool terminateProcFeatures = false;
+	bool terminateProcPose = false;
 
 	long int number_gen_pairs { 0 };
 	std::chrono::duration<double> total_duration_gen_pairs { 0 };
@@ -141,8 +143,8 @@ void generatePairImages (MeasureTime *mt) {
 		img_counter++;
 	}
 
-	// triggers the end of the program
-	mt->terminateProgram = true;
+	// signals the end of genPairs
+	mt->terminateGenPairs = true;
 }
 
 //=========================================================================================================
@@ -156,7 +158,7 @@ void procFeatures (MeasureTime *mt) {
 	auto mask = make_shared<Mat>(imread(inputFolder + "/" + inputMask, IMREAD_GRAYSCALE));
 
 	// loop over while not terminate or the queue is not empty
-	while ((!mt->terminateProgram)||(!imgProcQueue.empty())) {
+	while ((!mt->terminateGenPairs)||(!imgProcQueue.empty())) {
 
 		std::shared_ptr<Equirectangular> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
@@ -247,11 +249,11 @@ void procFeatures (MeasureTime *mt) {
 			std::ofstream outputFileTriplets { pathOutputTriplets };
 
 			// Keypoints of the first image of the first pair
-			std::vector<KeyPoint> kpt1 = lp[1]->getKeyPoints1();
+			std::vector<KeyPoint> kpt1 = p1->getImage()[0]->getKeyPoints();
 			// Keypoints of the second image of the first pair
-			std::vector<KeyPoint> kpt2 = lp[1]->getKeyPoints2();
+			std::vector<KeyPoint> kpt2 = p1->getImage()[1]->getKeyPoints();
 			// Keypoints of the second image of the second pair
-			std::vector<KeyPoint> kpt3 = lp[0]->getKeyPoints2();
+			std::vector<KeyPoint> kpt3 = p1->getImage()[2]->getKeyPoints();
 
 			// loop over the vector of matches
 			// v is vector with the indices of the keypoints
@@ -271,10 +273,12 @@ void procFeatures (MeasureTime *mt) {
 			tripletsProcQueue.push(p1);
 		}
 	}
+
+	// signals the end of procFeatures
+	mt->terminateProcFeatures = true;
 }
 
-//=========================================================================================================
-/*
+//========================================================================================================
 
 void ProcPose (MeasureTime *mt) {
 
@@ -283,55 +287,73 @@ void ProcPose (MeasureTime *mt) {
 	size_t counter { 0 };
 	RNG rng(12345);
 
-	std::chrono::high_resolution_clock::time_point t1 { };
-	std::chrono::high_resolution_clock::time_point t2 { };
-
-
-	//for (;;) {
-	while((!mt->terminateProgram)||(!tripletsProcQueue.empty())) {
+	while((!mt->terminateProcFeatures)||(!tripletsProcQueue.empty())) {
 
 		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
 
-		std::vector<Vec_Points<double>> p3d_liste;
+		// vector containing the spherical coordinates
+		std::vector<Vec_Points<double>> p3d_liste { };
 
 		// width and height of the images
-		auto width = (receivedTripletsImages->imgs[0]->omni->getImage()).cols;
-		auto height = (receivedTripletsImages->imgs[0]->omni->getImage()).rows;
+		auto width = receivedTripletsImages->getImage()[0]->getOmni()->getImage().cols;
+		auto height = receivedTripletsImages->getImage()[0]->getOmni()->getImage().rows;
 
+		// loop over the spheres
 		for (int idx { 0 }; idx < 3; ++idx) {
+
 			Vec_Points<double> list_matches { };
 
-			for(auto match : receivedTripletsImages->matches){
-				// gets the positions of the features
-				auto xy = receivedTripletsImages->imgs[idx]->kpts[match[idx]].pt;
+			for(auto match : receivedTripletsImages->getMatchVector()){
+				// match is a vector of indices of the keypoints
+				// for triplets its size is 3
 
-				 convert x and y to spherical
+				// gets the xy coordinate of the keypoint corresponding to sphere idx
+				auto xy = receivedTripletsImages->getImage()[idx]->getKeyPoints()[match[idx]].pt;
+
+				// convert x and y coordinates to spherical
 				Points<double> p = convertCartesian2Spherical (static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
 
+				// push_back the spherical coordinate into list_matches
 				list_matches.push_back(p);
 			}
 
-			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply" };
-			writePly(plyFileNameOri, list_matches);
+//			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply" };
+//			writePly(plyFileNameOri, list_matches);
 
 			p3d_liste.push_back(list_matches);
 		}
 
+		// output in a file the spherical coordinates of the triplet
+
+		// check if folder to write the matches exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputSpherical)) {
+			fs::create_directory(outputFolder + "/" + outputSpherical);
+		}
+
+		std::string pathOutputSpherical = outputFolder + "/" + outputSpherical + "/" + receivedTripletsImages->getTripletImageName();
+		// open the file to write the matches
+		std::ofstream outputFileSpherical { pathOutputSpherical };
+
+		// loop over the vector of spherical coordinates
+		for (size_t i { 0 }; i < p3d_liste[0].size(); ++i) {
+			// p3d_liste[0][i] is a point with x, y, z coordinates of sphere 1
+			// p3d_liste[1][i] is a point with x, y, z coordinates of sphere 2
+			// p3d_liste[2][i] is a point with x, y, z coordinates of sphere 3
+			outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] <<  std::endl;
+		}
+		outputFileSpherical.close();
+		/*
 		Vec_Points<double> sv_scene { };
 		std::vector<Points<double>> positions { };
 
 		double error_max { 1e-8 };
 
-		t1 = std::chrono::high_resolution_clock::now();
 		//-----------------------------------------------------
 		// call to pose estimation algorithm
 		pose_estimation (p3d_liste, error_max, sv_scene, positions);
 		//-----------------------------------------------------
-		t2 = std::chrono::high_resolution_clock::now();
-		mt->total_duration_pose_estimation += t2 - t1;
-		mt->number_pose_estimation++;
 
 		Model m2 { };
 		Matx13f modelCenter(0, 0, 0);
@@ -370,20 +392,18 @@ void ProcPose (MeasureTime *mt) {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
-		t1 = std::chrono::high_resolution_clock::now();
 		//-----------------------------------------------------
 		//fusionModel(&m, &m2);
 		//-----------------------------------------------------
-		t2 = std::chrono::high_resolution_clock::now();
-		mt->total_duration_fusion += t2 - t1;
-		mt->number_fusion++;
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		//writePly(fusionFileName, m.features);
+		 */
 		counter++;
 	}
+	// signals the end of pose estimation
+	mt->terminateProcPose = true;
 }
-*/
 
 
 int main() {
@@ -394,11 +414,11 @@ int main() {
 
 	std::thread GenPairs (generatePairImages, &mt);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt);
-	//std::thread ProcessPoseEstimation (ProcPose, &mt);
+	std::thread ProcessPoseEstimation (ProcPose, &mt);
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
-	//ProcessPoseEstimation.join();
+	ProcessPoseEstimation.join();
 
 //	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
 //	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;

@@ -39,7 +39,7 @@ public:
 	const T & operator[](const size_t i) const;
 	T & operator[](const size_t i);
 	friend std::ostream & operator <<(std::ostream & out, const Points<T> &a) {
-		out << "(" << a.m_pA->at(0) << ", " << a.m_pA->at(1) << ", " << a.m_pA->at(2) << ")" << std::endl;
+		out << a.m_pA->at(0) << " " << a.m_pA->at(1) << " " << a.m_pA->at(2);
 		return out;
 	}
 };

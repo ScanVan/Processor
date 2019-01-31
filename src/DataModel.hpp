@@ -173,6 +173,7 @@ public:
 };
 
 class TripletsWithMatches {
+private:
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
 	std::vector<std::vector<int>> matches;
 public:
@@ -190,42 +191,54 @@ public:
 	std::string getTripletImageName() {
 		return imgs[0]->getImgName() + "_" + imgs[1]->getImgName() + "_" + imgs[2]->getImgName();
 	}
+	std::shared_ptr<EquirectangularWithFeatures> * getImage() {
+		return imgs;
+	}
+//	std::shared_ptr<EquirectangularWithFeatures> & getImage1() {
+//		return imgs[0];
+//	}
+//	std::shared_ptr<EquirectangularWithFeatures> & getImage2() {
+//		return imgs[1];
+//	}
+//	std::shared_ptr<EquirectangularWithFeatures> & getImage3() {
+//		return imgs[2];
+//	}
 	string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}
 };
 
+typedef cv::Vec<uint8_t, 3> RGB888;
 
-typedef Vec<uint8_t, 3> RGB888;
 class ModelFeature {
 public:
-	Matx13f position;
+	cv::Matx13f position;
 	RGB888 color;
 	ModelFeature() {
 	}
-	ModelFeature(Matx13f position) :
+	ModelFeature(cv::Matx13f position) :
 			position(position) {
 	}
-	ModelFeature(Matx13f position, RGB888 color) :
+	ModelFeature(cv::Matx13f position, RGB888 color) :
 			position(position), color(color) {
 	}
 };
 
 class ModelKeypoint {
 public:
-	Matx13f position;
+	cv::Matx13f position;
 
 	ModelKeypoint() {
 	}
-	ModelKeypoint(Matx13f position) :
+	ModelKeypoint(cv::Matx13f position) :
 			position(position) {
 	}
 };
 
 class Model {
 public:
-	vector<ModelKeypoint> keypoints;
-	vector<ModelFeature> features;
+	std::vector<ModelKeypoint> keypoints;
+	std::vector<ModelFeature> features;
 
 	Model() {
 		std::stringstream ss { };

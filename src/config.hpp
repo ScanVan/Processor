@@ -27,6 +27,8 @@ const std::string outputFeatures { "1_features" };
 const std::string outputMatches { "2_matches" };
 // output folder where the triplets matches for two pairs of images is written
 const std::string outputTriplets { "3_triplets" };
+// output folder where the spherical coordinates of the triplets are written
+const std::string outputSpherical { "4_spherical" };
 
 
 
