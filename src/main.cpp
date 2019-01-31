@@ -163,7 +163,7 @@ void procFeatures (MeasureTime *mt) {
 
 		std::stringstream ss {};
 		ss << "=========================" << std::endl
-		   << "Received equirectangular image " << receivedPairImages->getImgName() << std::endl
+		   << "Received equirectangular image " << receivedPairImages->getImgNum() << std::endl
 		   << "=========================" << std::endl;
 		print (ss.str());
 
@@ -226,19 +226,50 @@ void procFeatures (MeasureTime *mt) {
 			v.pop_back();
 		}
 
-		/*
 		// lp is a sort of queue where the matches are stored
 		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
 
+			// calculates the keypoints common on two pairs of images
+			// in this case it creates a triplet
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+			// write the matched features for two consecutive pair of images, i.e. triplets
+			// check if folder to write the matches exists, if not create it
+			if (!fs::exists(outputFolder + "/" + outputTriplets)) {
+				fs::create_directory(outputFolder + "/" + outputTriplets);
+			}
+
+			std::string pathOutputTriplets = outputFolder + "/" + outputTriplets + "/" + p1->getTripletImageName();
+			// open the file to write the matches
+			std::ofstream outputFileTriplets { pathOutputTriplets };
+
+			// Keypoints of the first image of the first pair
+			std::vector<KeyPoint> kpt1 = lp[1]->getKeyPoints1();
+			// Keypoints of the second image of the first pair
+			std::vector<KeyPoint> kpt2 = lp[1]->getKeyPoints2();
+			// Keypoints of the second image of the second pair
+			std::vector<KeyPoint> kpt3 = lp[0]->getKeyPoints2();
+
+			// loop over the vector of matches
+			// v is vector with the indices of the keypoints
+			for (const auto &v : p1->getMatchVector()) {
+				// kpt1[v[0]] is the keypoint of the first image of the first pair
+				// kpt2[v[1]] is the keypoint of the second image of the first pair
+				// kpt3[v[2]] is the keypoint of the second image of the second pair
+				outputFileTriplets << std::setprecision(15)
+					<< kpt1[v[0]].pt.x << " " << kpt1[v[0]].pt.y << " "
+					<< kpt2[v[1]].pt.x << " " << kpt2[v[1]].pt.y << " "
+					<< kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
+			}
+			outputFileTriplets.close();
+
 			lp.pop_back();
 			// push the triplet to the thread-safe queue and send it for pose estimation
 			tripletsProcQueue.push(p1);
-		}*/
+		}
 	}
 }
 

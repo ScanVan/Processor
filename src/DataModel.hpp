@@ -173,19 +173,23 @@ public:
 };
 
 class TripletsWithMatches {
-public:
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
-	vector<vector<int>> matches;
+	std::vector<std::vector<int>> matches;
+public:
 
 	TripletsWithMatches() {
 	}
-	;
 	TripletsWithMatches(std::shared_ptr<EquirectangularWithFeatures> img0, std::shared_ptr<EquirectangularWithFeatures> img1, std::shared_ptr<EquirectangularWithFeatures> img2) {
 		this->imgs[0] = img0;
 		this->imgs[1] = img1;
 		this->imgs[2] = img2;
 	}
-	;
+	std::vector<std::vector<int>> & getMatchVector() {
+		return matches;
+	}
+	std::string getTripletImageName() {
+		return imgs[0]->getImgName() + "_" + imgs[1]->getImgName() + "_" + imgs[2]->getImgName();
+	}
 	string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}

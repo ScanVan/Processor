@@ -25,5 +25,9 @@ const std::string outputFolder { "data_out" };
 const std::string outputFeatures { "1_features" };
 // output folder where the matches for each pair of image is written
 const std::string outputMatches { "2_matches" };
+// output folder where the triplets matches for two pairs of images is written
+const std::string outputTriplets { "3_triplets" };
+
+
 
 #endif /* SRC_CONFIG_HPP_ */
