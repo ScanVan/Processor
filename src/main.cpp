@@ -103,6 +103,9 @@ void generatePairImages (MeasureTime *mt) {
 	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
 
+//	// for test purpose only
+//	file_list.erase(file_list.begin()+3, file_list.end());
+
 	// counter for the image number
 	int img_counter { 1 };
 
@@ -175,7 +178,7 @@ void procFeatures (MeasureTime *mt) {
 
 		//==========================================================================================
 		// write into file the features
-		// check if folder to write the features exists, if not create it
+		// check if folder exists, if not create it
 		if (!fs::exists(outputFolder + "/" + outputFeatures)) {
 			fs::create_directory(outputFolder + "/" + outputFeatures);
 		}
@@ -204,7 +207,7 @@ void procFeatures (MeasureTime *mt) {
 
 			//==========================================================================================
 			// write the matched features for each pair of images
-			// check if folder to write the matches exists, if not create it
+			// check if folder exists, if not create it
 			if (!fs::exists(outputFolder + "/" + outputMatches)) {
 				fs::create_directory(outputFolder + "/" + outputMatches);
 			}
@@ -244,7 +247,7 @@ void procFeatures (MeasureTime *mt) {
 
 			//==========================================================================================
 			// write the matched features for two consecutive pair of images, i.e. triplets
-			// check if folder to write the matches exists, if not create it
+			// check if folder exists, if not create it
 			if (!fs::exists(outputFolder + "/" + outputTriplets)) {
 				fs::create_directory(outputFolder + "/" + outputTriplets);
 			}
@@ -344,7 +347,7 @@ void ProcPose (MeasureTime *mt) {
 		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
 
-		// check if folder to write the matches exists, if not create it
+		// check if folder exists, if not create it
 		if (!fs::exists(outputFolder + "/" + outputSpherical)) {
 			fs::create_directory(outputFolder + "/" + outputSpherical);
 		}
@@ -382,7 +385,7 @@ void ProcPose (MeasureTime *mt) {
 		//==========================================================================================
 		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
 
-		// check if folder to write the matches exists, if not create it
+		// check if folder exists, if not create it
 		if (!fs::exists(outputFolder + "/" + outputPose3)) {
 			fs::create_directory(outputFolder + "/" + outputPose3);
 		}
@@ -430,27 +433,50 @@ void ProcPose (MeasureTime *mt) {
 		//==========================================================================================
 
 		//==========================================================================================
+		// output in a file of the sparse point cloud of the triplet
+
+		// check if folder exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
+			fs::create_directory(outputFolder + "/" + outputPointCloud3);
+		}
+
+		std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
+		// open the file to write the matches
+		std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
+
+		// loop over the vector of point cloud
+		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+			// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
+			outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
+		}
+
+		outputFilePointCloud3.close();
 
 		//==========================================================================================
 
-
 /*
 		Model m2 { };
-		Matx13f modelCenter(0, 0, 0);
+		cv::Matx13f modelCenter(0, 0, 0);
 
+		// calculates the mean position of the triplets
 		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
 			modelCenter = modelCenter + Matx13f(f[0], f[1], f[2]);
 		}
-
 		modelCenter = 1.0 / positions.size() * modelCenter;
+
+		// calculates the average distance of the reconstracted points with respect to the mean of the positions
 		double averageDistance = 0;
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
 			averageDistance += norm(modelCenter - Matx13f(f[0], f[1], f[2]));
 		}
 		averageDistance /= sv_scene.size();
+
+		// assigns a random color to the model
 		RGB888 modelColor = RGB888(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+
+		// copies to features vector of the model the points whose average distance is relatively close
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
 			if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
@@ -458,6 +484,8 @@ void ProcPose (MeasureTime *mt) {
 			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
+
+
 		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
 			m2.keypoints.push_back(ModelKeypoint(1000 * Matx13f(f[0], f[1], f[2])));
@@ -465,8 +493,6 @@ void ProcPose (MeasureTime *mt) {
 		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
 		writePly(plyFileName, m2.features);
 */
-
-
 
 
 		//-----------------------------------------------------

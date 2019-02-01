@@ -31,7 +31,7 @@ const std::string outputTriplets { "3_triplets" };
 const std::string outputSpherical { "4_spherical" };
 // output folder where the rotation and translation of triplets are written
 const std::string outputPose3 { "5_pose_3" };
-
-
+// output folder where the point cloud of the triplets are written
+const std::string outputPointCloud3 { "6_sparse_3" };
 
 #endif /* SRC_CONFIG_HPP_ */
