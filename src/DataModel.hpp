@@ -194,15 +194,15 @@ public:
 	std::shared_ptr<EquirectangularWithFeatures> * getImage() {
 		return imgs;
 	}
-//	std::shared_ptr<EquirectangularWithFeatures> & getImage1() {
-//		return imgs[0];
-//	}
-//	std::shared_ptr<EquirectangularWithFeatures> & getImage2() {
-//		return imgs[1];
-//	}
-//	std::shared_ptr<EquirectangularWithFeatures> & getImage3() {
-//		return imgs[2];
-//	}
+	int getImageNumber1() {
+		return imgs[0]->getOmni()->getImgNum();
+	}
+	int getImageNumber2() {
+		return imgs[1]->getOmni()->getImgNum();
+	}
+	int getImageNumber3() {
+		return imgs[2]->getOmni()->getImgNum();
+	}
 	string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}

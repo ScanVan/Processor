@@ -43,6 +43,7 @@ public:
 	Vec_Points(Vec_Points<T> &&obj);
 	Vec_Points(size_t longueur, Points<T> &p);
 	Vec_Points(size_t longueur);
+	void clear() { m_pV->clear(); } // removes all elements and set size to 0
 	void push_back (const Points<T> &p);
 	void push_back (const T x, const T y, const T z);
 	void pop_back();

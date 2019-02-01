@@ -173,6 +173,7 @@ void procFeatures (MeasureTime *mt) {
 		std::shared_ptr<EquirectangularWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
 		////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+		//==========================================================================================
 		// write into file the features
 		// check if folder to write the features exists, if not create it
 		if (!fs::exists(outputFolder + "/" + outputFeatures)) {
@@ -189,6 +190,7 @@ void procFeatures (MeasureTime *mt) {
 			outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
 		}
 		outputFile.close();
+		//==========================================================================================
 
 		// v is a sort of queue where the extracted features are stored
 		v.push_front(featuredImages);
@@ -200,6 +202,7 @@ void procFeatures (MeasureTime *mt) {
 			lp.push_front(omniMatching(v[1], v[0]));
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+			//==========================================================================================
 			// write the matched features for each pair of images
 			// check if folder to write the matches exists, if not create it
 			if (!fs::exists(outputFolder + "/" + outputMatches)) {
@@ -224,6 +227,7 @@ void procFeatures (MeasureTime *mt) {
 						 kp2[m.trainIdx].pt.x << " " << kp2[m.trainIdx].pt.y << std::endl;
 			}
 			outputFileMatches.close();
+			//==========================================================================================
 
 			v.pop_back();
 		}
@@ -238,6 +242,7 @@ void procFeatures (MeasureTime *mt) {
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+			//==========================================================================================
 			// write the matched features for two consecutive pair of images, i.e. triplets
 			// check if folder to write the matches exists, if not create it
 			if (!fs::exists(outputFolder + "/" + outputTriplets)) {
@@ -267,6 +272,7 @@ void procFeatures (MeasureTime *mt) {
 					<< kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
 			}
 			outputFileTriplets.close();
+			//==========================================================================================
 
 			lp.pop_back();
 			// push the triplet to the thread-safe queue and send it for pose estimation
@@ -292,6 +298,16 @@ void ProcPose (MeasureTime *mt) {
 		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
+
+		// print message
+		std::stringstream ss {};
+		ss << "=========================" << std::endl
+		   << "Received triplets images " << "(" <<
+		   receivedTripletsImages->getImageNumber1() << ", " <<
+		   receivedTripletsImages->getImageNumber2() << ", " <<
+		   receivedTripletsImages->getImageNumber3() << ")" << std::endl
+		   << "=========================" << std::endl;
+		print (ss.str());
 
 		// vector containing the spherical coordinates
 		std::vector<Vec_Points<double>> p3d_liste { };
@@ -325,6 +341,7 @@ void ProcPose (MeasureTime *mt) {
 			p3d_liste.push_back(list_matches);
 		}
 
+		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
 
 		// check if folder to write the matches exists, if not create it
@@ -344,17 +361,80 @@ void ProcPose (MeasureTime *mt) {
 			outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] <<  std::endl;
 		}
 		outputFileSpherical.close();
-		/*
+		//==========================================================================================
+
+
 		Vec_Points<double> sv_scene { };
 		std::vector<Points<double>> positions { };
+		std::vector<Points<double>> sv_t_liste { };
+		std::vector<Mat_33<double>> sv_r_liste { };
 
 		double error_max { 1e-8 };
 
 		//-----------------------------------------------------
 		// call to pose estimation algorithm
-		pose_estimation (p3d_liste, error_max, sv_scene, positions);
+		int initialNumberFeatures = p3d_liste[0].size();
+		int numIter = pose_estimation (p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
+		int finalNumberFeatures = p3d_liste[0].size();
 		//-----------------------------------------------------
 
+
+		//==========================================================================================
+		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
+
+		// check if folder to write the matches exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputPose3)) {
+			fs::create_directory(outputFolder + "/" + outputPose3);
+		}
+
+		std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
+		// open the file to write the matches
+		std::ofstream outputFilePose3 { pathOutputPose3 };
+
+		// Output the rotation and translation matrices
+		// Format (R12)(t12')(R23)(t23')
+		//         3x3  3x1   3x3  3x1
+		outputFilePose3 << std::setprecision(15) <<
+				sv_r_liste[0][0][0] << " " <<
+				sv_r_liste[0][0][1] << " " <<
+				sv_r_liste[0][0][2] << " " <<
+				sv_t_liste[0][0] << " " <<
+				sv_r_liste[1][0][0] << " " <<
+				sv_r_liste[1][0][1] << " " <<
+				sv_r_liste[1][0][2] << " " <<
+				sv_t_liste[1][0] << std::endl;
+		outputFilePose3 << std::setprecision(15) <<
+				sv_r_liste[0][1][0] << " " <<
+				sv_r_liste[0][1][1] << " " <<
+				sv_r_liste[0][1][2] << " " <<
+				sv_t_liste[0][1] << " " <<
+				sv_r_liste[1][1][0] << " " <<
+				sv_r_liste[1][1][1] << " " <<
+				sv_r_liste[1][1][2] << " " <<
+				sv_t_liste[1][1] << std::endl;
+		outputFilePose3 << std::setprecision(15) <<
+				sv_r_liste[0][2][0] << " " <<
+				sv_r_liste[0][2][1] << " " <<
+				sv_r_liste[0][2][2] << " " <<
+				sv_t_liste[0][2] << " " <<
+				sv_r_liste[1][2][0] << " " <<
+				sv_r_liste[1][2][1] << " " <<
+				sv_r_liste[1][2][2] << " " <<
+				sv_t_liste[1][2] << std::endl;
+		outputFilePose3 << std::endl;
+		outputFilePose3 << "Number of iterations: " << numIter << std::endl;
+		outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
+		outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
+
+		outputFilePose3.close();
+		//==========================================================================================
+
+		//==========================================================================================
+
+		//==========================================================================================
+
+
+/*
 		Model m2 { };
 		Matx13f modelCenter(0, 0, 0);
 
@@ -384,13 +464,10 @@ void ProcPose (MeasureTime *mt) {
 		}
 		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
 		writePly(plyFileName, m2.features);
+*/
 
 
-		std::stringstream ss {};
-		ss << "=========================" << std::endl
-		   << "Received triplets images " << receivedTripletsImages->idString() << std::endl
-		   << "=========================" << std::endl;
-		print (ss.str());
+
 
 		//-----------------------------------------------------
 		//fusionModel(&m, &m2);
@@ -398,7 +475,7 @@ void ProcPose (MeasureTime *mt) {
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		//writePly(fusionFileName, m.features);
-		 */
+
 		counter++;
 	}
 	// signals the end of pose estimation

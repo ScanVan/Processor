@@ -572,11 +572,10 @@ void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 
 	centers_determination(sv_r_liste, sv_t_liste, center_liste);
 
-	// If sv_scene empty, fill with zeros
-	if (sv_scene.size() < nb_pts) {
-		for (size_t i{0}; i < nb_pts; ++i) {
-			sv_scene.push_back(0, 0, 0);
-		}
+	// reset sv_scene
+	sv_scene.clear(); // removes all elements and set the size to 0
+	for (size_t i { 0 }; i < nb_pts; ++i) {
+		sv_scene.push_back(0, 0, 0);
 	}
 
 	for (size_t j { 0 }; j < nb_pts; ++j) {
@@ -596,11 +595,9 @@ void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 		std::vector<Points<T>> inter_liste { };
 
 		// Initialize inter_liste
-		if (inter_liste.size() < nb_sph) {
-			for (size_t i { inter_liste.size() }; i < nb_sph; ++i) {
-				Points<T> p { };
-				inter_liste.push_back(p);
-			}
+		for (size_t i { inter_liste.size() }; i < nb_sph; ++i) {
+			Points<T> p { };
+			inter_liste.push_back(p);
 		}
 
 		for (size_t i { 0 }; i < nb_sph; ++i) {
@@ -618,16 +615,26 @@ void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 
 
 template <typename T>
-void pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
+int pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 					  Vec_Points<T> &sv_scene,
-					  std::vector<Points<T>> &positions) {
+					  std::vector<Points<T>> &positions,
+					  std::vector<Mat_33<T>> &sv_r_liste,
+					  std::vector<Points<T>> &sv_t_liste) {
+//Input:
+// p3d_liste:	initial spherical coordinates of the features
+// error_max: 	the error tolerance
+//Output:
+// Function return the number of iterations
+// p3d_liste: 	filtered spherical coordinates of the features
+// sv_scene:	point cloud of the reconstructed scene
+// positions:	positions of the sphere
+// sv_r_liste:  rotations matrices
+// sv_t_liste:	translation vectors
 
 	size_t nb_sph = p3d_liste.size();
 	size_t nb_pts = p3d_liste[0].size();
 
 	std::vector<std::vector<T>> sv_u_liste { };
-	std::vector<Points<T>> sv_t_liste { };
-	std::vector<Mat_33<T>> sv_r_liste { };
 	std::vector<std::vector<T>> sv_e_liste { };
 
 	// Initialize sv_u_liste
@@ -637,12 +644,14 @@ void pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 	}
 
 	// Initialize sv_r_liste
+	sv_r_liste.clear(); // removes all elements and reset size to 0
 	for (size_t i { 0 }; i < (nb_sph - 1); ++i) {
 		Mat_33<T> m { };
 		sv_r_liste.push_back(m);
 	}
 
 	// Initialize sv_t_liste;
+	sv_t_liste.clear(); // removes all elements and reset size to 0
 	for (size_t i { 0 }; i < (nb_sph - 1); ++i) {
 		Points<T> p { };
 		sv_t_liste.push_back(p);
@@ -681,31 +690,32 @@ void pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 
 		}
 
-		std::cout << "Iteration " << std::setfill('0') << std::setw(3) << counter << " : t_norm : ";
-		std::cout << std::fixed << std::setprecision(6) << sv_t_liste[0].norm() << ", " << sv_t_liste[1].norm() << " : with " << p3d_liste[0].size()
-				<< " features : ";
-		std::cout << " mean radius : (" << std::accumulate(sv_u_liste[0].begin(), sv_u_liste[0].end(), 0.0) / sv_u_liste[0].size() << " "
-				<< std::accumulate(sv_u_liste[1].begin(), sv_u_liste[1].end(), 0.0) / sv_u_liste[1].size() << " "
-				<< std::accumulate(sv_u_liste[2].begin(), sv_u_liste[2].end(), 0.0) / sv_u_liste[2].size() << ")" << std::endl;
+//		std::cout << "Iteration " << std::setfill('0') << std::setw(3) << counter << " : t_norm : ";
+//		std::cout << std::fixed << std::setprecision(6) << sv_t_liste[0].norm() << ", " << sv_t_liste[1].norm() << " : with " << p3d_liste[0].size()
+//				<< " features : ";
+//		std::cout << " mean radius : (" << std::accumulate(sv_u_liste[0].begin(), sv_u_liste[0].end(), 0.0) / sv_u_liste[0].size() << " "
+//				<< std::accumulate(sv_u_liste[1].begin(), sv_u_liste[1].end(), 0.0) / sv_u_liste[1].size() << " "
+//				<< std::accumulate(sv_u_liste[2].begin(), sv_u_liste[2].end(), 0.0) / sv_u_liste[2].size() << ")" << std::endl;
 
 	}
 
-	std::cout << sv_r_liste[0] << std::endl;
-	std::cout << sv_r_liste[1] << std::endl;
-
-	std::cout << sv_t_liste[0] << std::endl;
-	std::cout << sv_t_liste[1] << std::endl;
+//	std::cout << sv_r_liste[0] << std::endl;
+//	std::cout << sv_r_liste[1] << std::endl;
+//
+//	std::cout << sv_t_liste[0] << std::endl;
+//	std::cout << sv_t_liste[1] << std::endl;
 
 	// Initialize positions
-	if (positions.size() < nb_sph) {
-		for (size_t i { 0 }; i < nb_sph; ++i) {
-			Points<T> p { };
-			positions.push_back(p);
-		}
+	positions.clear(); // removes all the elemnts and set the size to 0
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		Points<T> p { };
+		positions.push_back(p);
 	}
+
 
 	pose_scene(p3d_liste, sv_u_liste, sv_r_liste, sv_t_liste, sv_scene, positions);
 
+	return counter; // returns the number of iterations
 }
 
 #endif /* SRC_ESTIMATION_HPP_ */

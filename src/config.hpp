@@ -29,6 +29,8 @@ const std::string outputMatches { "2_matches" };
 const std::string outputTriplets { "3_triplets" };
 // output folder where the spherical coordinates of the triplets are written
 const std::string outputSpherical { "4_spherical" };
+// output folder where the rotation and translation of triplets are written
+const std::string outputPose3 { "5_pose_3" };
 
 
 
