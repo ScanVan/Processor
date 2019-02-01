@@ -56,7 +56,7 @@ void writePly(const std::string &file, const Vec_Points<double> &features){
 
 
 
-vector<ModelFeature> keypointsToFeatures(vector<ModelKeypoint> *keypoints){
+vector<ModelFeature> keypointsToFeatures(vector<ModelViewPoint> *keypoints){
 	vector<ModelFeature> ret;
 	for(k : *keypoints) ret.push_back(ModelFeature(k.position, RGB888(0,255,0)));
 	return ret;

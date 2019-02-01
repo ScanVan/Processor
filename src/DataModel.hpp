@@ -224,20 +224,20 @@ public:
 	}
 };
 
-class ModelKeypoint {
+class ModelViewPoint {
 public:
 	cv::Matx13f position;
 
-	ModelKeypoint() {
+	ModelViewPoint() {
 	}
-	ModelKeypoint(cv::Matx13f position) :
+	ModelViewPoint(cv::Matx13f position) :
 			position(position) {
 	}
 };
 
 class Model {
 public:
-	std::vector<ModelKeypoint> keypoints;
+	std::vector<ModelViewPoint> cameraPositions;
 	std::vector<ModelFeature> features;
 
 	Model() {

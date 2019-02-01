@@ -3,22 +3,22 @@
 void fusionModel (Model *m1, Model *m2) {
 	std::stringstream ss { };
 	ss << "=========================" << std::endl
-	   << "Fusion Model (" << m2->keypoints.size() << " into " << m1->keypoints.size() << ")" << std::endl
+	   << "Fusion Model (" << m2->cameraPositions.size() << " into " << m1->cameraPositions.size() << ")" << std::endl
 	   << "=========================" << std::endl;
 	print(ss.str());
-	if(m1->keypoints.empty()){
+	if(m1->cameraPositions.empty()){
 		m1->features.insert(m1->features.end(), m2->features.begin(), m2->features.end());
-		m1->keypoints.insert(m1->keypoints.end(), m2->keypoints.begin(), m2->keypoints.end());
+		m1->cameraPositions.insert(m1->cameraPositions.end(), m2->cameraPositions.begin(), m2->cameraPositions.end());
 		return;
 	}
-	assert(m1->keypoints.size() >= 3);
-	assert(m2->keypoints.size() == 3);
-	auto m1CapturesSize = m1->keypoints.size();
-	auto m1C1 = m1->keypoints[m1CapturesSize-2].position;
-	auto m1C2 = m1->keypoints[m1CapturesSize-1].position;
-	auto m2C1 = m2->keypoints[0].position;
-	auto m2C2 = m2->keypoints[1].position;
-	auto m2C3 = m2->keypoints[2].position;
+	assert(m1->cameraPositions.size() >= 3);
+	assert(m2->cameraPositions.size() == 3);
+	auto m1CapturesSize = m1->cameraPositions.size();
+	auto m1C1 = m1->cameraPositions[m1CapturesSize-2].position;
+	auto m1C2 = m1->cameraPositions[m1CapturesSize-1].position;
+	auto m2C1 = m2->cameraPositions[0].position;
+	auto m2C2 = m2->cameraPositions[1].position;
+	auto m2C3 = m2->cameraPositions[2].position;
 	auto scaleFactor = norm(m1C2-m1C1)/norm(m2C2-m2C1);
 	auto t1 = (1/norm(m1C2-m1C1)) * (m1C2-m1C1);
 	auto t2 = (1/norm(m2C2-m2C1)) * (m2C2-m2C1);
@@ -34,8 +34,8 @@ void fusionModel (Model *m1, Model *m2) {
 		feature.position = translation + scaleFactor * (source.position* rotation);
 		m1->features.push_back(feature);
 	}
-	ModelKeypoint m1C3;
+	ModelViewPoint m1C3;
 	m1C3.position = translation + scaleFactor * (m2C3*rotation);
-	m1->keypoints.push_back(m1C3);
+	m1->cameraPositions.push_back(m1C3);
 }
 

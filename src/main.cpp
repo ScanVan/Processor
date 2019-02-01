@@ -291,7 +291,9 @@ void procFeatures (MeasureTime *mt) {
 
 void ProcPose (MeasureTime *mt) {
 
-	std::vector<Model> vecm { };
+	//std::vector<Model> vecm { };
+
+	// the main model where all the models will be superposed
 	Model m { };
 	size_t counter { 0 };
 	RNG rng(12345);
@@ -454,7 +456,6 @@ void ProcPose (MeasureTime *mt) {
 
 		//==========================================================================================
 
-/*
 		Model m2 { };
 		cv::Matx13f modelCenter(0, 0, 0);
 
@@ -485,18 +486,18 @@ void ProcPose (MeasureTime *mt) {
 			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
 
-
+		// copies to keypoints vector the positions of the spheres * 1000
 		for (size_t i { 0 }; i < positions.size(); ++i) {
 			Points<double> f = positions[i];
-			m2.keypoints.push_back(ModelKeypoint(1000 * Matx13f(f[0], f[1], f[2])));
+			m2.cameraPositions.push_back(ModelViewPoint(Matx13f(f[0], f[1], f[2])));
 		}
+
+		// writes the estimated triplet model
 		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
 		writePly(plyFileName, m2.features);
-*/
-
 
 		//-----------------------------------------------------
-		//fusionModel(&m, &m2);
+		fusionModel(&m, &m2);
 		//-----------------------------------------------------
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };

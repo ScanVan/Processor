@@ -332,12 +332,11 @@ inline void centers_determination (const std::vector<Mat_33<T>> &sv_r_liste, con
 {
 	size_t nb_sph { sv_r_liste.size() + 1 };
 
-	// if center_liste is empty
-	if (center_liste.size() < nb_sph) {
-		Points<T> zp { };
-		for (size_t i { center_liste.size() }; i < nb_sph; ++i) {
-			center_liste.push_back(zp);
-		}
+	// Resets center_liste
+	center_liste.clear();
+	Points<T> zp { };
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		center_liste.push_back(zp);
 	}
 
 	for (size_t i { 0 }; i < nb_sph; ++i) {
