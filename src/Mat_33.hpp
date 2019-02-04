@@ -214,6 +214,10 @@ inline Mat_33<T> Mat_33<T>::inv() const {
 
 	T det = mat[0][0] * cofactor.mat[0][0] + mat[0][1] * cofactor.mat[0][1] + mat[0][2] * cofactor.mat[0][2];
 
+	// If det is zero, the inverse cannot be calculated. Throw an exception.
+	if (det == 0) {
+		throw std::runtime_error("Division by zero in the matrix inverse calculation.");
+	}
 	return (adjugate * (1/det));
 }
 

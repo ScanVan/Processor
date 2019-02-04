@@ -1,6 +1,6 @@
 #include "pipelineAlgo.hpp"
 
-shared_ptr<EquirectangularWithFeatures> extractFeatures(shared_ptr<Equirectangular> omni, shared_ptr<Mat> mask) {
+shared_ptr<EquirectangularWithFeatures> extractFeatures(shared_ptr<Equirectangular> omni, shared_ptr<cv::Mat> mask) {
 	//DEBUG_PTR(omni);
 
 	shared_ptr<EquirectangularWithFeatures> featured { new EquirectangularWithFeatures { omni } };

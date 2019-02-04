@@ -8,7 +8,9 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 
 	// Print message on the screen
 	std::stringstream ss {};
-	ss << "=========================" << std::endl << "Feature Extraction (" << im1->idString() << " "  << im2->idString() << ")" << std::endl << "=========================" << std::endl;
+	ss << "=========================" << std::endl
+	   << "Feature Extraction (" << im1->idString() << " "  << im2->idString() << ")" << std::endl
+	   << "=========================" << std::endl;
 	print (ss.str());
 
 	// Shared pointer of the object that stores the matches
@@ -52,6 +54,16 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 			p1->getMatches().push_back(matches_all[i]);
 		}
 	}
+
+//	cv::Mat outImg{};
+//
+//	cv::drawMatches(p1->getImage1()->getOmni()->getImage(), p1->getKeyPoints1(), p1->getImage2()->getOmni()->getImage(), p1->getKeyPoints2(), p1->getMatches(), outImg);
+//
+//	namedWindow("Matches", cv::WINDOW_NORMAL);
+//	imshow ("Matches", outImg);
+//	waitKey(0);
+
+
 #endif
 
 	return p1;

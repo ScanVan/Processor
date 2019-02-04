@@ -111,37 +111,34 @@ void generatePairImages (MeasureTime *mt) {
 
 	for (auto &file: file_list) {
 
-		// reads the image from the file
-		cv::Mat input_image { };
-		input_image = imread(file, cv::IMREAD_UNCHANGED);
-		if (!input_image.data) {
-			throw std::runtime_error("Could not load the input image");
+		if (img_counter > 68) {
+
+			// reads the image from the file
+			cv::Mat input_image { };
+			input_image = imread(file, cv::IMREAD_UNCHANGED);
+			if (!input_image.data) {
+				throw std::runtime_error("Could not load the input image");
+			}
+
+			// removes the folder name that precedes the path
+			std::string fileName = file.substr(file.find_last_of("/", std::string::npos) + 1, std::string::npos);
+			//std::cout << fileName << '\n';
+
+			// creates a shared pointer from an anonymous object initialized with the image
+			std::shared_ptr<Equirectangular> p1(new Equirectangular { input_image, img_counter, fileName });
+
+			// simulates the delay of image acquisition
+			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+			// push to the queue
+			imgProcQueue.push(p1);
+
+			std::stringstream ss { };
+			ss << "=========================" << std::endl << "Send pair images " << p1->getImgNum() << std::endl << "========================="
+					<< std::endl;
+			print(ss.str());
+
 		}
-
-		// removes the folder name that precedes the path
-		std::string fileName = file.substr(file.find_last_of("/", std::string::npos) + 1, std::string::npos);
-		//std::cout << fileName << '\n';
-
-		// creates a shared pointer from an anonymous object initialized with the image
-		std::shared_ptr<Equirectangular> p1(new Equirectangular { input_image, img_counter, fileName });
-
-		// simulates the delay of image acquisition
-		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-		// push to the queue
-		imgProcQueue.push(p1);
-
-		std::stringstream ss { };
-		ss << "=========================" << std::endl
-		   << "Send pair images " << p1->getImgNum() << std::endl
-		   << "=========================" << std::endl;
-		print(ss.str());
-
-//		namedWindow("Display window", WINDOW_NORMAL);
-//		imshow ("Display window", p1->getImage());
-//
-//
-//		waitKey(0);
 
 		img_counter++;
 	}
@@ -158,7 +155,12 @@ void procFeatures (MeasureTime *mt) {
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
-	auto mask = make_shared<Mat>(imread(inputFolder + "/" + inputMask, IMREAD_GRAYSCALE));
+	auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
+
+	// If the mask was not loaded, throw an error
+	if (! mask->data) {
+		throw std::runtime_error("The image mask could not be read.");
+	}
 
 	// loop over while not terminate or the queue is not empty
 	while ((!mt->terminateGenPairs)||(!imgProcQueue.empty())) {
@@ -379,82 +381,82 @@ void ProcPose (MeasureTime *mt) {
 		//-----------------------------------------------------
 		// call to pose estimation algorithm
 		int initialNumberFeatures = p3d_liste[0].size();
-		int numIter = pose_estimation (p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
-		int finalNumberFeatures = p3d_liste[0].size();
-		//-----------------------------------------------------
 
+		try {
+			int numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
+			int finalNumberFeatures = p3d_liste[0].size();
+			//-----------------------------------------------------
 
-		//==========================================================================================
-		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
+			//==========================================================================================
+			// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
 
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputPose3)) {
-			fs::create_directory(outputFolder + "/" + outputPose3);
+			// check if folder exists, if not create it
+			if (!fs::exists(outputFolder + "/" + outputPose3)) {
+				fs::create_directory(outputFolder + "/" + outputPose3);
+			}
+
+			std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
+			// open the file to write the matches
+			std::ofstream outputFilePose3 { pathOutputPose3 };
+
+			// Output the rotation and translation matrices
+			// Format (R12)(t12')(R23)(t23')
+			//         3x3  3x1   3x3  3x1
+			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][0][0] << " " << sv_r_liste[0][0][1] << " " << sv_r_liste[0][0][2] << " "
+					<< sv_t_liste[0][0] << " " << sv_r_liste[1][0][0] << " " << sv_r_liste[1][0][1] << " " << sv_r_liste[1][0][2] << " "
+					<< sv_t_liste[1][0] << std::endl;
+			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][1][0] << " " << sv_r_liste[0][1][1] << " " << sv_r_liste[0][1][2] << " "
+					<< sv_t_liste[0][1] << " " << sv_r_liste[1][1][0] << " " << sv_r_liste[1][1][1] << " " << sv_r_liste[1][1][2] << " "
+					<< sv_t_liste[1][1] << std::endl;
+			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][2][0] << " " << sv_r_liste[0][2][1] << " " << sv_r_liste[0][2][2] << " "
+					<< sv_t_liste[0][2] << " " << sv_r_liste[1][2][0] << " " << sv_r_liste[1][2][1] << " " << sv_r_liste[1][2][2] << " "
+					<< sv_t_liste[1][2] << std::endl;
+			outputFilePose3 << std::endl;
+			outputFilePose3 << "Number of iterations: " << numIter << std::endl;
+			outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
+			outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
+
+			outputFilePose3.close();
+			//==========================================================================================
+
+			//==========================================================================================
+			// output in a file of the sparse point cloud of the triplet
+
+			// check if folder exists, if not create it
+			if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
+				fs::create_directory(outputFolder + "/" + outputPointCloud3);
+			}
+
+			std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
+			// open the file to write the matches
+			std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
+
+			// loop over the vector of point cloud
+			for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+				// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
+				outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
+			}
+
+			outputFilePointCloud3.close();
+
+			// write the ply file
+			std::string pathOutputPointCloud3ply = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName()
+					+ ".ply";
+			writePly(pathOutputPointCloud3ply, sv_scene);
+
+			//==========================================================================================
+		} catch (...) {
+			std::cout << "==========================================================================================" << std::endl;
+			std::cout << "Exception thrown in pose_estimation" << std::endl;
+			std::cout << "Triplet (" << receivedTripletsImages->getImageNumber1() << ", " <<
+									    receivedTripletsImages->getImageNumber2() << ", " <<
+										receivedTripletsImages->getImageNumber3() << ")" << std::endl;
+			std::cout << "Triplet file names: " << receivedTripletsImages->getTripletImageName() << std::endl;
+			std::cout << "==========================================================================================" << std::endl;
 		}
 
-		std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
-		// open the file to write the matches
-		std::ofstream outputFilePose3 { pathOutputPose3 };
 
-		// Output the rotation and translation matrices
-		// Format (R12)(t12')(R23)(t23')
-		//         3x3  3x1   3x3  3x1
-		outputFilePose3 << std::setprecision(15) <<
-				sv_r_liste[0][0][0] << " " <<
-				sv_r_liste[0][0][1] << " " <<
-				sv_r_liste[0][0][2] << " " <<
-				sv_t_liste[0][0] << " " <<
-				sv_r_liste[1][0][0] << " " <<
-				sv_r_liste[1][0][1] << " " <<
-				sv_r_liste[1][0][2] << " " <<
-				sv_t_liste[1][0] << std::endl;
-		outputFilePose3 << std::setprecision(15) <<
-				sv_r_liste[0][1][0] << " " <<
-				sv_r_liste[0][1][1] << " " <<
-				sv_r_liste[0][1][2] << " " <<
-				sv_t_liste[0][1] << " " <<
-				sv_r_liste[1][1][0] << " " <<
-				sv_r_liste[1][1][1] << " " <<
-				sv_r_liste[1][1][2] << " " <<
-				sv_t_liste[1][1] << std::endl;
-		outputFilePose3 << std::setprecision(15) <<
-				sv_r_liste[0][2][0] << " " <<
-				sv_r_liste[0][2][1] << " " <<
-				sv_r_liste[0][2][2] << " " <<
-				sv_t_liste[0][2] << " " <<
-				sv_r_liste[1][2][0] << " " <<
-				sv_r_liste[1][2][1] << " " <<
-				sv_r_liste[1][2][2] << " " <<
-				sv_t_liste[1][2] << std::endl;
-		outputFilePose3 << std::endl;
-		outputFilePose3 << "Number of iterations: " << numIter << std::endl;
-		outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
-		outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
-
-		outputFilePose3.close();
-		//==========================================================================================
-
-		//==========================================================================================
-		// output in a file of the sparse point cloud of the triplet
-
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
-			fs::create_directory(outputFolder + "/" + outputPointCloud3);
-		}
-
-		std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
-		// open the file to write the matches
-		std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
-
-		// loop over the vector of point cloud
-		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
-			// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
-			outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
-		}
-
-		outputFilePointCloud3.close();
-
-		//==========================================================================================
+/*
 
 		Model m2 { };
 		cv::Matx13f modelCenter(0, 0, 0);
@@ -502,6 +504,7 @@ void ProcPose (MeasureTime *mt) {
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		//writePly(fusionFileName, m.features);
+*/
 
 		counter++;
 	}
@@ -511,8 +514,6 @@ void ProcPose (MeasureTime *mt) {
 
 
 int main() {
-
-
 
 	MeasureTime mt{};
 

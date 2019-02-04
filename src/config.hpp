@@ -17,7 +17,9 @@ const std::string inputFolder { "data_in" };
 // input folder where the input images are located
 const std::string inputDataSet { "0_dataset" };
 // input folder where the mask is located
-const std::string inputMask { "1_maksk" };
+const std::string inputMask { "1_mask" };
+// name of the file of the mask
+const std::string inputMaskFileName { "mask0.png" };
 
 // output main folder
 const std::string outputFolder { "data_out" };

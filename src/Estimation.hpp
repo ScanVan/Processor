@@ -351,7 +351,7 @@ inline void centers_determination (const std::vector<Mat_33<T>> &sv_r_liste, con
 }
 
 template<typename T>
-inline std::vector<Points<T>> azim_determination(std::vector<Points<T>> &azim_liste,
+inline void azim_determination(std::vector<Points<T>> &azim_liste,
 		        								  const std::vector<Mat_33<T>> &sv_r_liste,
 				        						  const std::vector<Points<T>> &sv_t_liste) {
 
@@ -362,8 +362,6 @@ inline std::vector<Points<T>> azim_determination(std::vector<Points<T>> &azim_li
 			azim_liste[i] = sv_r_liste[k].transpose() * azim_liste[i];
 		}
 	}
-
-	return azim_liste;
 
 }
 
@@ -501,8 +499,8 @@ inline void estimation_rayons(const std::vector<Vec_Points<T>> &p3d_liste,
 	std::vector<Points<T>> center_liste { };
 
 	// Initialize center_liste
+	Points<T> p {};
 	if (center_liste.size() < nb_sph) {
-		Points<T> p {};
 		for (size_t i{ center_liste.size() }; i < nb_sph; ++i ) {
 			center_liste.push_back(p);
 		}
@@ -578,36 +576,19 @@ void pose_scene (const std::vector<Vec_Points<T>> &p3d_liste,
 	}
 
 	for (size_t j { 0 }; j < nb_pts; ++j) {
+
 		std::vector<Points<T>> azim_liste { };
 		for (size_t i { 0 }; i < nb_sph; ++i) {
 			azim_liste.push_back(p3d_liste[i][j]);
 		}
-		azim_liste = azim_determination(azim_liste, sv_r_liste, sv_t_liste);
-		std::vector<T> rayons { };
-		try {
-			rayons = intersection_bis(center_liste, azim_liste);
-		} catch (...) {
-			for (size_t k { 0 }; k < nb_sph; ++k) {
-				rayons[k] = sv_u_liste[k][j];
-			}
-		}
-		std::vector<Points<T>> inter_liste { };
-
-		// Initialize inter_liste
-		for (size_t i { inter_liste.size() }; i < nb_sph; ++i) {
-			Points<T> p { };
-			inter_liste.push_back(p);
-		}
-
-		for (size_t i { 0 }; i < nb_sph; ++i) {
-			inter_liste[i] = center_liste[i] + azim_liste[i] * rayons[i];
-		}
+		azim_determination(azim_liste, sv_r_liste, sv_t_liste);
 
 		Points<T> inter { };
-		for (size_t i {0}; i < inter_liste.size(); ++i) {
-			inter = inter + inter_liste[i];
-		}
-		sv_scene[j] = inter / inter_liste.size();
+
+		// Calculates the optimal intersection point inter passing the current feature centers and directions
+		optimal_intersection(center_liste, azim_liste, inter);
+
+		sv_scene[j] = inter;
 
 	}
 }

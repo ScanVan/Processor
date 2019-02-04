@@ -227,6 +227,7 @@ public:
 class ModelViewPoint {
 public:
 	cv::Matx13f position;
+	// add rotation matrix
 
 	ModelViewPoint() {
 	}
