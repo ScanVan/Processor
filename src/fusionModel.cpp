@@ -24,8 +24,8 @@ void fusionModel (Model *m1, Model *m2) {
 	auto t2 = (1/norm(m2C2-m2C1)) * (m2C2-m2C1);
 	auto v = cross(t1,t2);
 	auto c = t1.dot(t2);
-	auto w = Matx33f(0.0,-v(2),v(1),v(2),0.0,-v(0),-v(1),v(0),0.0);
-	auto rotation = Matx33f().eye() + w + (1/(1+c))*(w*w);
+	auto w = cv::Matx33f(0.0,-v(2),v(1),v(2),0.0,-v(0),-v(1),v(0),0.0);
+	auto rotation = cv::Matx33f().eye() + w + (1/(1+c))*(w*w);
 	auto translation = m1C1-m2C1;
 
 	for(auto source : m2->features){

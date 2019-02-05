@@ -28,6 +28,7 @@
 #include "pipelineAlgo.hpp"
 #include "Cartesian2Spherical.hpp"
 #include "config.hpp"
+#include "utils.hpp"
 
 using namespace std;
 using namespace cv;
@@ -180,21 +181,7 @@ void procFeatures (MeasureTime *mt) {
 
 		//==========================================================================================
 		// write into file the features
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputFeatures)) {
-			fs::create_directory(outputFolder + "/" + outputFeatures);
-		}
-
-		std::string pathOutputFeature = outputFolder + "/" + outputFeatures + "/" + featuredImages->getImgName();
-
-		// write features extracted for each image into files
-		// open the file to write the features
-		std::ofstream outputFile { pathOutputFeature };
-		// go over all the features extracted and write them into the file
-		for (const auto kp : featuredImages->getKeyPoints()) {
-			outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
-		}
-		outputFile.close();
+		write_1_features(featuredImages);
 		//==========================================================================================
 
 		// v is a sort of queue where the extracted features are stored
@@ -209,29 +196,7 @@ void procFeatures (MeasureTime *mt) {
 
 			//==========================================================================================
 			// write the matched features for each pair of images
-			// check if folder exists, if not create it
-			if (!fs::exists(outputFolder + "/" + outputMatches)) {
-				fs::create_directory(outputFolder + "/" + outputMatches);
-			}
-
-			std::string pathOutputMatches = outputFolder + "/" + outputMatches + "/" + lp.front()->getPairImageName();
-			// open the file to write the matches
-			std::ofstream outputFileMatches { pathOutputMatches };
-
-			// Keypoints of the first image
-			std::vector<KeyPoint> kp1 = lp.front()->getKeyPoints1();
-			// Keypoints of the second image
-			std::vector<KeyPoint> kp2 = lp.front()->getKeyPoints2();
-
-			// loop over the vector of matches
-			for (const auto &m: lp.front()->getMatches()) {
-
-				// m.queryIdx is the index of the Keypoints on the first image
-				// m.trainIdx is the index of the Keypoints on the second image
-				outputFileMatches << std::setprecision(15) << kp1[m.queryIdx].pt.x << " " << kp1[m.queryIdx].pt.y << " "  <<
-						 kp2[m.trainIdx].pt.x << " " << kp2[m.trainIdx].pt.y << std::endl;
-			}
-			outputFileMatches.close();
+			write_2_matches(lp.front());
 			//==========================================================================================
 
 			v.pop_back();
@@ -252,32 +217,7 @@ void procFeatures (MeasureTime *mt) {
 
 			//==========================================================================================
 			// write the matched features for two consecutive pair of images, i.e. triplets
-			// check if folder exists, if not create it
-			if (!fs::exists(outputFolder + "/" + outputTriplets)) {
-				fs::create_directory(outputFolder + "/" + outputTriplets);
-			}
-
-			std::string pathOutputTriplets = outputFolder + "/" + outputTriplets + "/" + p1->getTripletImageName();
-			// open the file to write the matches
-			std::ofstream outputFileTriplets { pathOutputTriplets };
-
-			// Keypoints of the first image of the first pair
-			std::vector<KeyPoint> kpt1 = p1->getImage()[0]->getKeyPoints();
-			// Keypoints of the second image of the first pair
-			std::vector<KeyPoint> kpt2 = p1->getImage()[1]->getKeyPoints();
-			// Keypoints of the second image of the second pair
-			std::vector<KeyPoint> kpt3 = p1->getImage()[2]->getKeyPoints();
-
-			// loop over the vector of matches
-			// v is vector with the indices of the keypoints
-			for (const auto &v : p1->getMatchVector()) {
-				// kpt1[v[0]] is the keypoint of the first image of the first pair
-				// kpt2[v[1]] is the keypoint of the second image of the first pair
-				// kpt3[v[2]] is the keypoint of the second image of the second pair
-				outputFileTriplets << std::setprecision(15) << kpt1[v[0]].pt.x << " " << kpt1[v[0]].pt.y << " " << kpt2[v[1]].pt.x << " "
-						<< kpt2[v[1]].pt.y << " " << kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
-			}
-			outputFileTriplets.close();
+			write_3_triplets(p1);
 			//==========================================================================================
 
 			lp.pop_back();
@@ -308,9 +248,9 @@ void ProcPose (MeasureTime *mt) {
 
 		// print message
 		std::stringstream ss { };
-		ss << "=========================" << std::endl << "Received triplets images " << "(" << receivedTripletsImages->getImageNumber1() << ", "
-				<< receivedTripletsImages->getImageNumber2() << ", " << receivedTripletsImages->getImageNumber3() << ")" << std::endl
-				<< "=========================" << std::endl;
+		ss << "=========================" << std::endl
+		   << "Received triplets images " << "(" << receivedTripletsImages->getImageNumber1() << ", " << receivedTripletsImages->getImageNumber2() << ", " << receivedTripletsImages->getImageNumber3() << ")" << std::endl
+   		   << "=========================" << std::endl;
 		print(ss.str());
 
 		// vector containing the spherical coordinates
@@ -341,33 +281,13 @@ void ProcPose (MeasureTime *mt) {
 					list_matches.push_back(p);
 				}
 			}
-//			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply" };
-//			writePly(plyFileNameOri, list_matches);
 
 			p3d_liste.push_back(list_matches);
 		}
 
 		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
-
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputSpherical)) {
-			fs::create_directory(outputFolder + "/" + outputSpherical);
-		}
-
-		std::string pathOutputSpherical = outputFolder + "/" + outputSpherical + "/" + receivedTripletsImages->getTripletImageName();
-		// open the file to write the matches
-		std::ofstream outputFileSpherical { pathOutputSpherical };
-
-		// loop over the vector of spherical coordinates
-		for (size_t i { 0 }; i < p3d_liste[0].size(); ++i) {
-			// p3d_liste[0][i] is a point with x, y, z coordinates of sphere 1
-			// p3d_liste[1][i] is a point with x, y, z coordinates of sphere 2
-			// p3d_liste[2][i] is a point with x, y, z coordinates of sphere 3
-			outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] << std::endl;
-		}
-		outputFileSpherical.close();
-
+		write_4_spherical(receivedTripletsImages, p3d_liste);
 		//==========================================================================================
 
 		Vec_Points<double> sv_scene { };
@@ -391,62 +311,13 @@ void ProcPose (MeasureTime *mt) {
 
 		//==========================================================================================
 		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
-
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputPose3)) {
-			fs::create_directory(outputFolder + "/" + outputPose3);
-		}
-
-		std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
-		// open the file to write the matches
-		std::ofstream outputFilePose3 { pathOutputPose3 };
-
-		// Output the rotation and translation matrices
-		// Format (R12)(t12')(R23)(t23')
-		//         3x3  3x1   3x3  3x1
-		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][0][0] << " " << sv_r_liste[0][0][1] << " " << sv_r_liste[0][0][2] << " "
-				<< sv_t_liste[0][0] << " " << sv_r_liste[1][0][0] << " " << sv_r_liste[1][0][1] << " " << sv_r_liste[1][0][2] << " "
-				<< sv_t_liste[1][0] << std::endl;
-		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][1][0] << " " << sv_r_liste[0][1][1] << " " << sv_r_liste[0][1][2] << " "
-				<< sv_t_liste[0][1] << " " << sv_r_liste[1][1][0] << " " << sv_r_liste[1][1][1] << " " << sv_r_liste[1][1][2] << " "
-				<< sv_t_liste[1][1] << std::endl;
-		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][2][0] << " " << sv_r_liste[0][2][1] << " " << sv_r_liste[0][2][2] << " "
-				<< sv_t_liste[0][2] << " " << sv_r_liste[1][2][0] << " " << sv_r_liste[1][2][1] << " " << sv_r_liste[1][2][2] << " "
-				<< sv_t_liste[1][2] << std::endl;
-		outputFilePose3 << std::endl;
-		outputFilePose3 << "Number of iterations: " << numIter << std::endl;
-		outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
-		outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
-
-		outputFilePose3.close();
+		write_5_pose_3(receivedTripletsImages, sv_r_liste, sv_t_liste, numIter, initialNumberFeatures, finalNumberFeatures);
 		//==========================================================================================
 
 		//==========================================================================================
 		// output in a file of the sparse point cloud of the triplet
-
-		// check if folder exists, if not create it
-		if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
-			fs::create_directory(outputFolder + "/" + outputPointCloud3);
-		}
-
-		std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
-		// open the file to write the matches
-		std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
-
-		// loop over the vector of point cloud
-		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
-			// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
-			outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
-		}
-
-		outputFilePointCloud3.close();
-
-		// write the ply file
-		std::string pathOutputPointCloud3ply = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName() + ".ply";
-		writePly(pathOutputPointCloud3ply, sv_scene);
-
+		write_6_sparse_3 (receivedTripletsImages, sv_scene);
 		//==========================================================================================
-
 
 /*
 
@@ -508,6 +379,8 @@ void ProcPose (MeasureTime *mt) {
 int main() {
 
 	MeasureTime mt{};
+
+	checkFolders();
 
 	std::thread GenPairs (generatePairImages, &mt);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt);

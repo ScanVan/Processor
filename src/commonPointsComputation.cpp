@@ -1,6 +1,6 @@
 #include "pipelineAlgo.hpp"
 
-shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2) {
+std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2) {
 
 	// Print out message on the console
 	std::stringstream ss {};
@@ -14,7 +14,7 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 		throw std::runtime_error ("Error in indexes in CommonPointComputation");
 	}
 
-	shared_ptr<TripletsWithMatches> t1(new TripletsWithMatches { p1->getImage1(), p1->getImage2(), p2->getImage2() });
+	std::shared_ptr<TripletsWithMatches> t1(new TripletsWithMatches { p1->getImage1(), p1->getImage2(), p2->getImage2() });
 
 	//DEBUG_PTR(t1);
 

@@ -1,5 +1,9 @@
 #include "utils.hpp"
-#include "DataModel.hpp"
+#include <experimental/filesystem>
+
+namespace fs = std::experimental::filesystem;
+
+void writePly(const std::string &file, const Vec_Points<double> &features);
 
 static std::mutex mtx{};
 void print (std::string st) {
@@ -7,25 +11,216 @@ void print (std::string st) {
 	std::cout << st;
 }
 
-void writePly(string file, vector<ModelFeature> &features){
-	ofstream s;
+void checkFolders() {
+// checks if the folders to write the outputs exist
+// if not create them
+
+	// check if folder to write the features exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputFeatures)) {
+		fs::create_directory(outputFolder + "/" + outputFeatures);
+	}
+	// check if folder to write the matches for a pair of features exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputMatches)) {
+		fs::create_directory(outputFolder + "/" + outputMatches);
+	}
+	// check if folder to write the triplets exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputTriplets)) {
+		fs::create_directory(outputFolder + "/" + outputTriplets);
+	}
+	// check if folder to write the spherical coordinates exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputSpherical)) {
+		fs::create_directory(outputFolder + "/" + outputSpherical);
+	}
+	// check if folder to write the rotation and translation matrices exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputPose3)) {
+		fs::create_directory(outputFolder + "/" + outputPose3);
+	}
+	// check if folder to write sparse point cloud of the triplets exists, if not create it
+	if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
+		fs::create_directory(outputFolder + "/" + outputPointCloud3);
+	}
+}
+
+void write_1_features(const std::shared_ptr<EquirectangularWithFeatures> &featuredImages) {
+// writes the features in the output file
+
+	std::string pathOutputFeature = outputFolder + "/" + outputFeatures + "/" + featuredImages->getImgName();
+
+	// write features extracted for each image into files
+	// open the file to write the features
+	std::ofstream outputFile { pathOutputFeature };
+	// go over all the features extracted and write them into the file
+	for (const auto kp : featuredImages->getKeyPoints()) {
+		outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
+	}
+	outputFile.close();
+}
+
+void write_2_matches(const std::shared_ptr<PairWithMatches> &matches) {
+// writes the matches in the output file
+
+	std::string pathOutputMatches = outputFolder + "/" + outputMatches + "/" + matches->getPairImageName();
+	// open the file to write the matches
+	std::ofstream outputFileMatches { pathOutputMatches };
+
+	// Keypoints of the first image
+	std::vector<cv::KeyPoint> kp1 = matches->getKeyPoints1();
+	// Keypoints of the second image
+	std::vector<cv::KeyPoint> kp2 = matches->getKeyPoints2();
+
+	// loop over the vector of matches
+	for (const auto &m : matches->getMatches()) {
+
+		// m.queryIdx is the index of the Keypoints on the first image
+		// m.trainIdx is the index of the Keypoints on the second image
+		outputFileMatches << std::setprecision(15) << kp1[m.queryIdx].pt.x << " " << kp1[m.queryIdx].pt.y << " " << kp2[m.trainIdx].pt.x << " "
+				<< kp2[m.trainIdx].pt.y << std::endl;
+	}
+	outputFileMatches.close();
+
+}
+
+void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
+// writes the triplets in the output file
+
+	std::string pathOutputTriplets = outputFolder + "/" + outputTriplets + "/" + p1->getTripletImageName();
+	// open the file to write the matches
+	std::ofstream outputFileTriplets { pathOutputTriplets };
+
+	// Keypoints of the first image of the first pair
+	std::vector<cv::KeyPoint> kpt1 = p1->getImage()[0]->getKeyPoints();
+	// Keypoints of the second image of the first pair
+	std::vector<cv::KeyPoint> kpt2 = p1->getImage()[1]->getKeyPoints();
+	// Keypoints of the second image of the second pair
+	std::vector<cv::KeyPoint> kpt3 = p1->getImage()[2]->getKeyPoints();
+
+	// loop over the vector of matches
+	// v is vector with the indices of the keypoints
+	for (const auto &v : p1->getMatchVector()) {
+		// kpt1[v[0]] is the keypoint of the first image of the first pair
+		// kpt2[v[1]] is the keypoint of the second image of the first pair
+		// kpt3[v[2]] is the keypoint of the second image of the second pair
+		outputFileTriplets << std::setprecision(15)
+				<< kpt1[v[0]].pt.x << " "
+				<< kpt1[v[0]].pt.y << " "
+				<< kpt2[v[1]].pt.x << " "
+				<< kpt2[v[1]].pt.y << " "
+				<< kpt3[v[2]].pt.x << " "
+				<< kpt3[v[2]].pt.y << std::endl;
+	}
+	outputFileTriplets.close();
+}
+
+void write_4_spherical(const std::shared_ptr<TripletsWithMatches> &triplets, const std::vector<Vec_Points<double>> &p3d_liste) {
+// writes the spherical coordinates of each sphere
+
+	std::string pathOutputSpherical = outputFolder + "/" + outputSpherical + "/" + triplets->getTripletImageName();
+	// open the file to write the matches
+	std::ofstream outputFileSpherical { pathOutputSpherical };
+
+	// loop over the vector of spherical coordinates
+	for (size_t i { 0 }; i < p3d_liste[0].size(); ++i) {
+		// p3d_liste[0][i] is a point with x, y, z coordinates of sphere 1
+		// p3d_liste[1][i] is a point with x, y, z coordinates of sphere 2
+		// p3d_liste[2][i] is a point with x, y, z coordinates of sphere 3
+		outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] << std::endl;
+	}
+	outputFileSpherical.close();
+
+}
+
+void write_5_pose_3(const std::shared_ptr<TripletsWithMatches> &triplets,
+					const std::vector<Mat_33<double>> &sv_r_liste,
+					const std::vector<Points<double>> &sv_t_liste,
+					const int numIter,
+					const int initialNumberFeatures,
+					const int finalNumberFeatures)
+{
+// writes the rotation and translation matrices and statistics of the pose_estimation algorithm
+
+	std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + triplets->getTripletImageName();
+	// open the file to write the matches
+	std::ofstream outputFilePose3 { pathOutputPose3 };
+
+	// Output the rotation and translation matrices
+	// Format (R12)(t12')(R23)(t23')
+	//         3x3  3x1   3x3  3x1
+	outputFilePose3 << std::setprecision(15)
+				<< sv_r_liste[0][0][0] << " "
+				<< sv_r_liste[0][0][1] << " "
+				<< sv_r_liste[0][0][2] << " "
+				<< sv_t_liste[0][0] << " "
+				<< sv_r_liste[1][0][0] << " "
+				<< sv_r_liste[1][0][1] << " "
+				<< sv_r_liste[1][0][2] << " "
+				<< sv_t_liste[1][0] << std::endl;
+	outputFilePose3 << std::setprecision(15)
+				<< sv_r_liste[0][1][0] << " "
+				<< sv_r_liste[0][1][1] << " "
+				<< sv_r_liste[0][1][2] << " "
+				<< sv_t_liste[0][1] << " "
+				<< sv_r_liste[1][1][0] << " "
+				<< sv_r_liste[1][1][1] << " "
+				<< sv_r_liste[1][1][2] << " "
+				<< sv_t_liste[1][1] << std::endl;
+	outputFilePose3 << std::setprecision(15)
+				<< sv_r_liste[0][2][0] << " "
+				<< sv_r_liste[0][2][1] << " "
+				<< sv_r_liste[0][2][2] << " "
+				<< sv_t_liste[0][2] << " "
+				<< sv_r_liste[1][2][0] << " "
+				<< sv_r_liste[1][2][1] << " "
+				<< sv_r_liste[1][2][2] << " "
+				<< sv_t_liste[1][2] << std::endl;
+	outputFilePose3 << std::endl;
+	outputFilePose3 << "Number of iterations: " << numIter << std::endl;
+	outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
+	outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
+
+	outputFilePose3.close();
+}
+
+void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, const Vec_Points<double> &sv_scene) {
+// writes the sparse point cloud of the triplets
+
+	std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + triplets->getTripletImageName();
+	// open the file to write the matches
+	std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
+
+	// loop over the vector of point cloud
+	for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+		// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
+		outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
+	}
+
+	outputFilePointCloud3.close();
+
+	// write the ply file
+	std::string pathOutputPointCloud3ply = outputFolder + "/" + outputPointCloud3 + "/" + triplets->getTripletImageName() + ".ply";
+	writePly(pathOutputPointCloud3ply, sv_scene);
+
+}
+
+
+void writePly(std::string file, std::vector<ModelFeature> &features){
+	std::ofstream s{};
 	s.open (file);
 
-	s << "ply" << endl;
-	s << "format ascii 1.0 " << endl;
-	s << "element vertex " << features.size() << endl;
-	s << "property float32 x " << endl;
-	s << "property float32 y " << endl;
-	s << "property float32 z " << endl;
-	s << "property uchar red" << endl;
-	s << "property uchar green " << endl;
-	s << "property uchar blue " << endl;
-	s << "element face 0 " << endl;
-	s << "property list uint8 int32 vertex_index" << endl;
-	s << "end_header " << endl;
+	s << "ply" << std::endl;
+	s << "format ascii 1.0 " << std::endl;
+	s << "element vertex " << features.size() << std::endl;
+	s << "property float32 x " << std::endl;
+	s << "property float32 y " << std::endl;
+	s << "property float32 z " << std::endl;
+	s << "property uchar red" << std::endl;
+	s << "property uchar green " << std::endl;
+	s << "property uchar blue " << std::endl;
+	s << "element face 0 " << std::endl;
+	s << "property list uint8 int32 vertex_index" << std::endl;
+	s << "end_header " << std::endl;
 
 	for(auto f : features){
-		s << f.position(0) << " " << f.position(1) << " " << f.position(2) << " " <<  (uint16_t)f.color(0) << " " << (uint16_t)f.color(1) << " " << (uint16_t)f.color(2) << endl;
+		s << f.position(0) << " " << f.position(1) << " " << f.position(2) << " " <<  (uint16_t)f.color(0) << " " << (uint16_t)f.color(1) << " " << (uint16_t)f.color(2) << std::endl;
 	}
 
 	s.close();
@@ -33,7 +228,7 @@ void writePly(string file, vector<ModelFeature> &features){
 
 
 void writePly(const std::string &file, const Vec_Points<double> &features){
-//	‘__gnu_cxx::__normal_iterator<ModelKeypoint*, std::vector<ModelKeypoint> >
+
 	std::ofstream s {};
 	s.open (file);
 
@@ -56,15 +251,15 @@ void writePly(const std::string &file, const Vec_Points<double> &features){
 
 
 
-vector<ModelFeature> keypointsToFeatures(vector<ModelViewPoint> *keypoints){
-	vector<ModelFeature> ret;
-	for(k : *keypoints) ret.push_back(ModelFeature(k.position, RGB888(0,255,0)));
+std::vector<ModelFeature> keypointsToFeatures(std::vector<ModelViewPoint> *keypoints){
+	std::vector<ModelFeature> ret;
+	for(const auto &k : *keypoints) ret.push_back(ModelFeature(k.position, RGB888(0,255,0)));
 	return ret;
 }
 
 
 
-Matx13f cross(Matx13f a, Matx13f b){
-	auto c = Point3f(a(0), a(1), a(2)).cross(Point3f(b(0), b(1), b(2)));
-	return Matx13f(c.x,c.y,c.z);
+cv::Matx13f cross(cv::Matx13f a, cv::Matx13f b){
+	auto c = cv::Point3f(a(0), a(1), a(2)).cross(cv::Point3f(b(0), b(1), b(2)));
+	return cv::Matx13f(c.x,c.y,c.z);
 }

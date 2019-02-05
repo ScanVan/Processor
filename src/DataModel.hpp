@@ -18,8 +18,7 @@
 
 #include "utils.hpp"
 
-using namespace cv;
-using namespace std;
+void print (std::string st);
 
 class Equirectangular {
 // It stores the equirectangular image together with
@@ -93,17 +92,17 @@ public:
 class EquirectangularWithFeatures {
 private:
 	std::shared_ptr<Equirectangular> equi;
-	std::vector<KeyPoint> kpts; //Keypoints extracted from img.
+	std::vector<cv::KeyPoint> kpts; //Keypoints extracted from img.
 	cv::Mat desc; // descriptors
 public:
 	EquirectangularWithFeatures() {}
-	EquirectangularWithFeatures(shared_ptr<Equirectangular> sptr_equi) :
+	EquirectangularWithFeatures(std::shared_ptr<Equirectangular> sptr_equi) :
 			equi(sptr_equi) {
 	}
 	std::shared_ptr<Equirectangular> & getOmni() {
 		return equi;
 	}
-	std::vector<KeyPoint> & getKeyPoints() {
+	std::vector<cv::KeyPoint> & getKeyPoints() {
 		return kpts;
 	}
 	cv::Mat & getDesc() {
@@ -112,7 +111,7 @@ public:
 	void setOmni (const std::shared_ptr<Equirectangular> &p) {
 		equi = p;
 	}
-	void setKeyPoint(const std::vector<KeyPoint> & k) {
+	void setKeyPoint(const std::vector<cv::KeyPoint> & k) {
 		kpts = k;
 	}
 	void setDesc(const cv::Mat &d) {
@@ -152,10 +151,10 @@ public:
 	std::shared_ptr<EquirectangularWithFeatures> & getImage2() {
 		return imgs[1];
 	}
-	std::vector<KeyPoint> & getKeyPoints1() {
+	std::vector<cv::KeyPoint> & getKeyPoints1() {
 		return imgs[0]->getKeyPoints();
 	}
-	std::vector<KeyPoint> & getKeyPoints2() {
+	std::vector<cv::KeyPoint> & getKeyPoints2() {
 		return imgs[1]->getKeyPoints();
 	}
 	std::string getPairImageName() {
@@ -167,7 +166,7 @@ public:
 	int getImageNumber2() {
 		return imgs[1]->getOmni()->getImgNum();
 	}
-	string idString() {
+	std::string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + ")";
 	}
 };
@@ -203,7 +202,7 @@ public:
 	int getImageNumber3() {
 		return imgs[2]->getOmni()->getImgNum();
 	}
-	string idString() {
+	std::string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}
 };
