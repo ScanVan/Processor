@@ -111,7 +111,7 @@ void generatePairImages (MeasureTime *mt) {
 
 	for (auto &file: file_list) {
 
-		if (img_counter > 68) {
+//		if (img_counter > 68)  {
 
 			// reads the image from the file
 			cv::Mat input_image { };
@@ -138,7 +138,7 @@ void generatePairImages (MeasureTime *mt) {
 					<< std::endl;
 			print(ss.str());
 
-		}
+//		}
 
 		img_counter++;
 	}
@@ -247,6 +247,9 @@ void procFeatures (MeasureTime *mt) {
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+			// push the triplet to the thread-safe queue and send it for pose estimation
+			tripletsProcQueue.push(p1);
+
 			//==========================================================================================
 			// write the matched features for two consecutive pair of images, i.e. triplets
 			// check if folder exists, if not create it
@@ -271,17 +274,14 @@ void procFeatures (MeasureTime *mt) {
 				// kpt1[v[0]] is the keypoint of the first image of the first pair
 				// kpt2[v[1]] is the keypoint of the second image of the first pair
 				// kpt3[v[2]] is the keypoint of the second image of the second pair
-				outputFileTriplets << std::setprecision(15)
-					<< kpt1[v[0]].pt.x << " " << kpt1[v[0]].pt.y << " "
-					<< kpt2[v[1]].pt.x << " " << kpt2[v[1]].pt.y << " "
-					<< kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
+				outputFileTriplets << std::setprecision(15) << kpt1[v[0]].pt.x << " " << kpt1[v[0]].pt.y << " " << kpt2[v[1]].pt.x << " "
+						<< kpt2[v[1]].pt.y << " " << kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
 			}
 			outputFileTriplets.close();
 			//==========================================================================================
 
 			lp.pop_back();
-			// push the triplet to the thread-safe queue and send it for pose estimation
-			tripletsProcQueue.push(p1);
+
 		}
 	}
 
@@ -307,14 +307,11 @@ void ProcPose (MeasureTime *mt) {
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
 
 		// print message
-		std::stringstream ss {};
-		ss << "=========================" << std::endl
-		   << "Received triplets images " << "(" <<
-		   receivedTripletsImages->getImageNumber1() << ", " <<
-		   receivedTripletsImages->getImageNumber2() << ", " <<
-		   receivedTripletsImages->getImageNumber3() << ")" << std::endl
-		   << "=========================" << std::endl;
-		print (ss.str());
+		std::stringstream ss { };
+		ss << "=========================" << std::endl << "Received triplets images " << "(" << receivedTripletsImages->getImageNumber1() << ", "
+				<< receivedTripletsImages->getImageNumber2() << ", " << receivedTripletsImages->getImageNumber3() << ")" << std::endl
+				<< "=========================" << std::endl;
+		print(ss.str());
 
 		// vector containing the spherical coordinates
 		std::vector<Vec_Points<double>> p3d_liste { };
@@ -328,20 +325,22 @@ void ProcPose (MeasureTime *mt) {
 
 			Vec_Points<double> list_matches { };
 
-			for(auto match : receivedTripletsImages->getMatchVector()){
-				// match is a vector of indices of the keypoints
-				// for triplets its size is 3
+			// if there are matches then convert them to spherical
+			if (receivedTripletsImages->getMatchVector().size() != 0) {
+				for (auto match : receivedTripletsImages->getMatchVector()) {
+					// match is a vector of indices of the keypoints
+					// for triplets its size is 3
 
-				// gets the xy coordinate of the keypoint corresponding to sphere idx
-				auto xy = receivedTripletsImages->getImage()[idx]->getKeyPoints()[match[idx]].pt;
+					// gets the xy coordinate of the keypoint corresponding to sphere idx
+					auto xy = receivedTripletsImages->getImage()[idx]->getKeyPoints()[match[idx]].pt;
 
-				// convert x and y coordinates to spherical
-				Points<double> p = convertCartesian2Spherical (static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
+					// convert x and y coordinates to spherical
+					Points<double> p = convertCartesian2Spherical(static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
 
-				// push_back the spherical coordinate into list_matches
-				list_matches.push_back(p);
+					// push_back the spherical coordinate into list_matches
+					list_matches.push_back(p);
+				}
 			}
-
 //			std::string plyFileNameOri { "./resources/models_ori_" + std::to_string(idx) + "_" + std::to_string(counter) + ".ply" };
 //			writePly(plyFileNameOri, list_matches);
 
@@ -365,16 +364,16 @@ void ProcPose (MeasureTime *mt) {
 			// p3d_liste[0][i] is a point with x, y, z coordinates of sphere 1
 			// p3d_liste[1][i] is a point with x, y, z coordinates of sphere 2
 			// p3d_liste[2][i] is a point with x, y, z coordinates of sphere 3
-			outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] <<  std::endl;
+			outputFileSpherical << std::setprecision(15) << p3d_liste[0][i] << " " << p3d_liste[1][i] << " " << p3d_liste[2][i] << std::endl;
 		}
 		outputFileSpherical.close();
+
 		//==========================================================================================
 
-
 		Vec_Points<double> sv_scene { };
-		std::vector<Points<double>> positions { };
-		std::vector<Points<double>> sv_t_liste { };
-		std::vector<Mat_33<double>> sv_r_liste { };
+		std::vector<Points<double>> positions { Points<double>(), Points<double>(), Points<double>() };
+		std::vector<Points<double>> sv_t_liste { Points<double>(), Points<double>(), Points<double>() };
+		std::vector<Mat_33<double>> sv_r_liste { Mat_33<double>(), Mat_33<double>(), Mat_33<double>() };
 
 		double error_max { 1e-8 };
 
@@ -382,78 +381,71 @@ void ProcPose (MeasureTime *mt) {
 		// call to pose estimation algorithm
 		int initialNumberFeatures = p3d_liste[0].size();
 
-		try {
-			int numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
-			int finalNumberFeatures = p3d_liste[0].size();
-			//-----------------------------------------------------
+		int numIter {};
+		// Only compute if there are features in the vector
+		if (initialNumberFeatures!=0)
+			numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
 
-			//==========================================================================================
-			// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
+		int finalNumberFeatures = p3d_liste[0].size();
+		//-----------------------------------------------------
 
-			// check if folder exists, if not create it
-			if (!fs::exists(outputFolder + "/" + outputPose3)) {
-				fs::create_directory(outputFolder + "/" + outputPose3);
-			}
+		//==========================================================================================
+		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
 
-			std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
-			// open the file to write the matches
-			std::ofstream outputFilePose3 { pathOutputPose3 };
-
-			// Output the rotation and translation matrices
-			// Format (R12)(t12')(R23)(t23')
-			//         3x3  3x1   3x3  3x1
-			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][0][0] << " " << sv_r_liste[0][0][1] << " " << sv_r_liste[0][0][2] << " "
-					<< sv_t_liste[0][0] << " " << sv_r_liste[1][0][0] << " " << sv_r_liste[1][0][1] << " " << sv_r_liste[1][0][2] << " "
-					<< sv_t_liste[1][0] << std::endl;
-			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][1][0] << " " << sv_r_liste[0][1][1] << " " << sv_r_liste[0][1][2] << " "
-					<< sv_t_liste[0][1] << " " << sv_r_liste[1][1][0] << " " << sv_r_liste[1][1][1] << " " << sv_r_liste[1][1][2] << " "
-					<< sv_t_liste[1][1] << std::endl;
-			outputFilePose3 << std::setprecision(15) << sv_r_liste[0][2][0] << " " << sv_r_liste[0][2][1] << " " << sv_r_liste[0][2][2] << " "
-					<< sv_t_liste[0][2] << " " << sv_r_liste[1][2][0] << " " << sv_r_liste[1][2][1] << " " << sv_r_liste[1][2][2] << " "
-					<< sv_t_liste[1][2] << std::endl;
-			outputFilePose3 << std::endl;
-			outputFilePose3 << "Number of iterations: " << numIter << std::endl;
-			outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
-			outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
-
-			outputFilePose3.close();
-			//==========================================================================================
-
-			//==========================================================================================
-			// output in a file of the sparse point cloud of the triplet
-
-			// check if folder exists, if not create it
-			if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
-				fs::create_directory(outputFolder + "/" + outputPointCloud3);
-			}
-
-			std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
-			// open the file to write the matches
-			std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
-
-			// loop over the vector of point cloud
-			for (size_t i { 0 }; i < sv_scene.size(); ++i) {
-				// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
-				outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
-			}
-
-			outputFilePointCloud3.close();
-
-			// write the ply file
-			std::string pathOutputPointCloud3ply = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName()
-					+ ".ply";
-			writePly(pathOutputPointCloud3ply, sv_scene);
-
-			//==========================================================================================
-		} catch (...) {
-			std::cout << "==========================================================================================" << std::endl;
-			std::cout << "Exception thrown in pose_estimation" << std::endl;
-			std::cout << "Triplet (" << receivedTripletsImages->getImageNumber1() << ", " <<
-									    receivedTripletsImages->getImageNumber2() << ", " <<
-										receivedTripletsImages->getImageNumber3() << ")" << std::endl;
-			std::cout << "Triplet file names: " << receivedTripletsImages->getTripletImageName() << std::endl;
-			std::cout << "==========================================================================================" << std::endl;
+		// check if folder exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputPose3)) {
+			fs::create_directory(outputFolder + "/" + outputPose3);
 		}
+
+		std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + receivedTripletsImages->getTripletImageName();
+		// open the file to write the matches
+		std::ofstream outputFilePose3 { pathOutputPose3 };
+
+		// Output the rotation and translation matrices
+		// Format (R12)(t12')(R23)(t23')
+		//         3x3  3x1   3x3  3x1
+		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][0][0] << " " << sv_r_liste[0][0][1] << " " << sv_r_liste[0][0][2] << " "
+				<< sv_t_liste[0][0] << " " << sv_r_liste[1][0][0] << " " << sv_r_liste[1][0][1] << " " << sv_r_liste[1][0][2] << " "
+				<< sv_t_liste[1][0] << std::endl;
+		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][1][0] << " " << sv_r_liste[0][1][1] << " " << sv_r_liste[0][1][2] << " "
+				<< sv_t_liste[0][1] << " " << sv_r_liste[1][1][0] << " " << sv_r_liste[1][1][1] << " " << sv_r_liste[1][1][2] << " "
+				<< sv_t_liste[1][1] << std::endl;
+		outputFilePose3 << std::setprecision(15) << sv_r_liste[0][2][0] << " " << sv_r_liste[0][2][1] << " " << sv_r_liste[0][2][2] << " "
+				<< sv_t_liste[0][2] << " " << sv_r_liste[1][2][0] << " " << sv_r_liste[1][2][1] << " " << sv_r_liste[1][2][2] << " "
+				<< sv_t_liste[1][2] << std::endl;
+		outputFilePose3 << std::endl;
+		outputFilePose3 << "Number of iterations: " << numIter << std::endl;
+		outputFilePose3 << "Initial Number of Features  : " << initialNumberFeatures << std::endl;
+		outputFilePose3 << "Remaining Number of Features: " << finalNumberFeatures << std::endl;
+
+		outputFilePose3.close();
+		//==========================================================================================
+
+		//==========================================================================================
+		// output in a file of the sparse point cloud of the triplet
+
+		// check if folder exists, if not create it
+		if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
+			fs::create_directory(outputFolder + "/" + outputPointCloud3);
+		}
+
+		std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName();
+		// open the file to write the matches
+		std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
+
+		// loop over the vector of point cloud
+		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+			// sv_scene[i] is a point with x, y, z coordinates of the reconstructed triplet
+			outputFilePointCloud3 << std::setprecision(15) << sv_scene[i] << std::endl;
+		}
+
+		outputFilePointCloud3.close();
+
+		// write the ply file
+		std::string pathOutputPointCloud3ply = outputFolder + "/" + outputPointCloud3 + "/" + receivedTripletsImages->getTripletImageName() + ".ply";
+		writePly(pathOutputPointCloud3ply, sv_scene);
+
+		//==========================================================================================
 
 
 /*

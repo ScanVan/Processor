@@ -175,7 +175,7 @@ public:
 class TripletsWithMatches {
 private:
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
-	std::vector<std::vector<int>> matches;
+	std::vector<std::vector<int>> matches {};
 public:
 
 	TripletsWithMatches() {

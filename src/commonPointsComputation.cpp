@@ -27,49 +27,54 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 	p[0] = p1.get(); // pointer to PairWithMatches of the first pair
 	p[1] = p2.get(); // pointer to PairWithMatches of the second pair
 
-	// loop over the matches of the first pair
-	for (size_t p0MatchId { 0 }; p0MatchId < p[0]->getMatches().size(); ++p0MatchId) {
+	// if there are matches between pairs the compute the common matches for the triplet
+	if ((p[0]->getMatches().size() != 0) || (p[1]->getMatches().size() != 0)) {
 
-		bool ok { true };
-		// matchIds stores the keypoint index of the matches
-		// for triples the size is 3
-		int matchIds[pairsCount + 1] { };
-		// nextQueryIdx is the index of the keypoints of the second image of the first pair
-		int nextQueryIdx { p[0]->getMatches()[p0MatchId].trainIdx };
+		// loop over the matches of the first pair
+		for (size_t p0MatchId { 0 }; p0MatchId < p[0]->getMatches().size(); ++p0MatchId) {
 
-		// matchIds[0] is the index of the keypoints of the first image of the first pair
-		matchIds[0] = p[0]->getMatches()[p0MatchId].queryIdx;
-		// matchIds[1] is the index of the keypoints of the second image of the first pair
-		matchIds[1] = nextQueryIdx;
+			bool ok { true };
+			// matchIds stores the keypoint index of the matches
+			// for triples the size is 3
+			int matchIds[pairsCount + 1] { };
+			// nextQueryIdx is the index of the keypoints of the second image of the first pair
+			int nextQueryIdx { p[0]->getMatches()[p0MatchId].trainIdx };
 
-		// for the case of triplets it loops over the list of matches of the second pair
-		for (size_t pxId { 1 }; pxId < pairsCount; ++pxId) {
+			// matchIds[0] is the index of the keypoints of the first image of the first pair
+			matchIds[0] = p[0]->getMatches()[p0MatchId].queryIdx;
+			// matchIds[1] is the index of the keypoints of the second image of the first pair
+			matchIds[1] = nextQueryIdx;
 
-			PairWithMatches *px = p[pxId]; // in this case is the pointer to PairWithMatches of the second pair
+			// for the case of triplets it loops over the list of matches of the second pair
+			for (size_t pxId { 1 }; pxId < pairsCount; ++pxId) {
 
-			ok = false;
+				PairWithMatches *px = p[pxId]; // in this case is the pointer to PairWithMatches of the second pair
 
-			// loop over the list of matches of the second pair
-			for (size_t pxMatchId { 0 }; pxMatchId < px->getMatches().size(); ++pxMatchId) {
+				ok = false;
 
-				// if the keypoint index of the first image of the second pair is equal to
-				// the keypoint index of the second image of the first pair
-				if(px->getMatches()[pxMatchId].queryIdx == nextQueryIdx){
-					// then stores this index in matchId[3] and exit the loop
-					nextQueryIdx = px->getMatches()[pxMatchId].trainIdx;
-					matchIds[pxId+1] = nextQueryIdx;
-					ok = true;
-					break;
+				// loop over the list of matches of the second pair
+				for (size_t pxMatchId { 0 }; pxMatchId < px->getMatches().size(); ++pxMatchId) {
+
+					// if the keypoint index of the first image of the second pair is equal to
+					// the keypoint index of the second image of the first pair
+					if (px->getMatches()[pxMatchId].queryIdx == nextQueryIdx) {
+						// then stores this index in matchId[3] and exit the loop
+						nextQueryIdx = px->getMatches()[pxMatchId].trainIdx;
+						matchIds[pxId + 1] = nextQueryIdx;
+						ok = true;
+						break;
+					}
 				}
-			}
-			// in case of more than a triplet, if it didn't find the correspondence on the list
-			// then exit the loop and does not check the other list of mathes
-			if(!ok) break;
+				// in case of more than a triplet, if it didn't find the correspondence on the list
+				// then exit the loop and does not check the other list of mathes
+				if (!ok)
+					break;
 
-		}
-		// if the triplet was found then pushes to the vector of matches in the triplet
-		if(ok){
-			t1->getMatchVector().push_back(std::vector<int>(matchIds, matchIds + pairsCount + 1));
+			}
+			// if the triplet was found then pushes to the vector of matches in the triplet
+			if (ok) {
+				t1->getMatchVector().push_back(std::vector<int>(matchIds, matchIds + pairsCount + 1));
+			}
 		}
 	}
 
@@ -121,7 +126,6 @@ shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWit
 		}
 	}
 #endif
-
 
 	return t1;
 }
