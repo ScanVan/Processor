@@ -22,13 +22,13 @@
 #include <math.h>
 #include <experimental/filesystem>
 
-#include "ctpl.hpp"
 #include "Queue.hpp"
 #include "Estimation.hpp"
 #include "pipelineAlgo.hpp"
 #include "Cartesian2Spherical.hpp"
 #include "config.hpp"
 #include "utils.hpp"
+#include "log.hpp"
 
 using namespace std;
 using namespace cv;
@@ -40,57 +40,9 @@ ScanVan::thread_safe_queue<Equirectangular> imgProcQueue {};
 // Thread-safe queue for communication between the feature extraction and pose estimation
 ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 
-ctpl::thread_pool p(4 /* two threads in the pool */);
-
-class MeasureTime {
-
-public:
-
-	bool terminateGenPairs = false;
-	bool terminateProcFeatures = false;
-	bool terminateProcPose = false;
-
-	long int number_gen_pairs { 0 };
-	std::chrono::duration<double> total_duration_gen_pairs { 0 };
-	double get_avg_gen_pairs() {
-		return total_duration_gen_pairs.count() / number_gen_pairs * 1000.0;
-	}
-
-	long int number_feature_extract { 0 };
-	std::chrono::duration<double> total_duration_feature_extract { 0 };
-	double get_avg_feature_extract() {
-		return total_duration_feature_extract.count() / number_feature_extract * 1000.0;
-	}
-
-	long int number_pose_estimation { 0 };
-	std::chrono::duration<double> total_duration_pose_estimation { 0 };
-	double get_avg_pose_estimation() {
-		return total_duration_pose_estimation.count() / number_pose_estimation * 1000.0;
-	}
-
-	long int number_fusion { 0 };
-	std::chrono::duration<double> total_duration_fusion { 0 };
-	double get_avg_fusion() {
-		return total_duration_fusion.count() / number_fusion * 1000.0;
-	}
-
-	long int number_common_p { 0 };
-	std::chrono::duration<double> total_duration_common_p { 0 };
-	double get_avg_common_p() {
-		return total_duration_common_p.count() / number_common_p * 1000.0;
-	}
-
-	long int number_omni_matching { 0 };
-	std::chrono::duration<double> total_duration_omni_matching { 0 };
-	double get_avg_omni_matching() {
-		return total_duration_omni_matching.count() / number_omni_matching * 1000.0;
-	}
-
-};
-
 //=========================================================================================================
 
-void generatePairImages (MeasureTime *mt) {
+void generatePairImages (Log *mt) {
 // It reads the images from file and pushes to the queue for the feature extraction
 
 	// list of file names of the input images
@@ -104,42 +56,37 @@ void generatePairImages (MeasureTime *mt) {
 	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
 
-//	// for test purpose only
-//	file_list.erase(file_list.begin()+3, file_list.end());
-
 	// counter for the image number
 	int img_counter { 1 };
 
 	for (auto &file: file_list) {
 
-//		if (img_counter > 68)  {
+		// reads the image from the file
+		cv::Mat input_image { };
+		input_image = imread(file, cv::IMREAD_UNCHANGED);
+		if (!input_image.data) {
+			throw std::runtime_error("Could not load the input image");
+		}
 
-			// reads the image from the file
-			cv::Mat input_image { };
-			input_image = imread(file, cv::IMREAD_UNCHANGED);
-			if (!input_image.data) {
-				throw std::runtime_error("Could not load the input image");
-			}
+		// removes the folder name that precedes the path
+		std::string fileName = file.substr(file.find_last_of("/", std::string::npos) + 1, std::string::npos);
+		//std::cout << fileName << '\n';
 
-			// removes the folder name that precedes the path
-			std::string fileName = file.substr(file.find_last_of("/", std::string::npos) + 1, std::string::npos);
-			//std::cout << fileName << '\n';
+		// creates a shared pointer from an anonymous object initialized with the image
+		std::shared_ptr<Equirectangular> p1(new Equirectangular { input_image, img_counter, fileName });
 
-			// creates a shared pointer from an anonymous object initialized with the image
-			std::shared_ptr<Equirectangular> p1(new Equirectangular { input_image, img_counter, fileName });
+		// simulates the delay of image acquisition
+		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-			// simulates the delay of image acquisition
-			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+		// push to the queue
+		imgProcQueue.push(p1);
 
-			// push to the queue
-			imgProcQueue.push(p1);
-
-			std::stringstream ss { };
-			ss << "=========================" << std::endl << "Send pair images " << p1->getImgNum() << std::endl << "========================="
-					<< std::endl;
-			print(ss.str());
-
-//		}
+		std::stringstream ss { };
+		ss << "=========================" << std::endl
+		   << "Send pair images " << p1->getImgNum() << std::endl
+		   << "========================="
+		   << std::endl;
+		print(ss.str());
 
 		img_counter++;
 	}
@@ -150,7 +97,7 @@ void generatePairImages (MeasureTime *mt) {
 
 //=========================================================================================================
 
-void procFeatures (MeasureTime *mt) {
+void procFeatures (Log *mt) {
 
 	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
@@ -175,9 +122,12 @@ void procFeatures (MeasureTime *mt) {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
+
+		mt->start("1. Feature Extraction"); // measures the feature extraction
 		////////////////////////////////////////////////////////////////////////////////////////////////////////
 		std::shared_ptr<EquirectangularWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
 		////////////////////////////////////////////////////////////////////////////////////////////////////////
+		mt->stop("1. Feature Extraction");  // measures the feature extraction
 
 		//==========================================================================================
 		// write into file the features
@@ -190,9 +140,11 @@ void procFeatures (MeasureTime *mt) {
 		// and the last set of features is discarded
 		if (v.size() == 2) {
 
+			mt->start("2. Feature Matching Pairs"); // measures the feature matching of pairs
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			lp.push_front(omniMatching(v[1], v[0]));
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
+			mt->stop("2. Feature Matching Pairs"); // measures the feature matching of pairs
 
 			//==========================================================================================
 			// write the matched features for each pair of images
@@ -208,9 +160,12 @@ void procFeatures (MeasureTime *mt) {
 
 			// calculates the keypoints common on two pairs of images
 			// in this case it creates a triplet
+
+			mt->start("3. Common Points Computation - Triplets"); // measures the common points computation
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation(lp[1], lp[0]);
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
+			mt->stop("3. Common Points Computation - Triplets"); // measures the common points computation
 
 			// push the triplet to the thread-safe queue and send it for pose estimation
 			tripletsProcQueue.push(p1);
@@ -231,7 +186,7 @@ void procFeatures (MeasureTime *mt) {
 
 //========================================================================================================
 
-void ProcPose (MeasureTime *mt) {
+void ProcPose (Log *mt) {
 
 	//std::vector<Model> vecm { };
 
@@ -260,6 +215,7 @@ void ProcPose (MeasureTime *mt) {
 		auto width = receivedTripletsImages->getImage()[0]->getOmni()->getImage().cols;
 		auto height = receivedTripletsImages->getImage()[0]->getOmni()->getImage().rows;
 
+		mt->start("4. Conversion to Spherical - Triplets"); // measures the conversion time to spherical
 		// loop over the spheres
 		for (int idx { 0 }; idx < 3; ++idx) {
 
@@ -267,15 +223,15 @@ void ProcPose (MeasureTime *mt) {
 
 			// if there are matches then convert them to spherical
 			if (receivedTripletsImages->getMatchVector().size() != 0) {
-				for (auto match : receivedTripletsImages->getMatchVector()) {
+				for (const auto &match : receivedTripletsImages->getMatchVector()) {
 					// match is a vector of indices of the keypoints
 					// for triplets its size is 3
 
 					// gets the xy coordinate of the keypoint corresponding to sphere idx
-					auto xy = receivedTripletsImages->getImage()[idx]->getKeyPoints()[match[idx]].pt;
+					auto keypoint = receivedTripletsImages->getImage()[idx]->getKeyPoints()[match[idx]].pt;
 
 					// convert x and y coordinates to spherical
-					Points<double> p = convertCartesian2Spherical(static_cast<double>(xy.x), static_cast<double>(xy.y), width, height);
+					Points<double> p = convertCartesian2Spherical(static_cast<double>(keypoint.x), static_cast<double>(keypoint.y), width, height);
 
 					// push_back the spherical coordinate into list_matches
 					list_matches.push_back(p);
@@ -284,6 +240,7 @@ void ProcPose (MeasureTime *mt) {
 
 			p3d_liste.push_back(list_matches);
 		}
+		mt->stop("4. Conversion to Spherical - Triplets"); // measures the conversion time to spherical
 
 		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
@@ -303,8 +260,11 @@ void ProcPose (MeasureTime *mt) {
 
 		int numIter {};
 		// Only compute if there are features in the vector
-		if (initialNumberFeatures!=0)
+		if (initialNumberFeatures!=0) {
+			mt->start("5. Pose Estimation"); // measures the time of pose estimation algorithm
 			numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
+			mt->stop("5. Pose Estimation"); // measures the time of pose estimation algorithm
+		}
 
 		int finalNumberFeatures = p3d_liste[0].size();
 		//-----------------------------------------------------
@@ -378,8 +338,9 @@ void ProcPose (MeasureTime *mt) {
 
 int main() {
 
-	MeasureTime mt{};
+	Log mt{};
 
+	// check if folders for writing the results exist
 	checkFolders();
 
 	std::thread GenPairs (generatePairImages, &mt);
@@ -390,12 +351,7 @@ int main() {
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation.join();
 
-//	std::cout << "Average duration lapse gen pairs: " << mt.get_avg_gen_pairs() << " ms" << std::endl;
-//	std::cout << "Average duration lapse feature extraction: " << mt.get_avg_feature_extract() << " ms" << std::endl;
-//	std::cout << "Average duration lapse omni matching: " << mt.get_avg_omni_matching() << " ms" << std::endl;
-//	std::cout << "Average duration lapse common point computation: " << mt.get_avg_common_p() << " ms" << std::endl;
-//	std::cout << "Average duration lapse pose estimation: " << mt.get_avg_pose_estimation() << " ms" << std::endl;
-//	std::cout << "Average duration lapse fusion: " << mt.get_avg_fusion() << " ms" << std::endl;
+	mt.listRunningTimes();
 
 	return 0;
 
