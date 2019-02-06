@@ -26,7 +26,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2);
 std::shared_ptr<Model> poseEstimation (std::shared_ptr<TripletsWithMatches> t1);
 void fusionModel (Model *m1, Model *m2);
-
+void fusionModel2 (Model *m1, Model *m2, uint32_t commonViewPointsCount);
 
 
 #endif /* SRC_PIPELINEALGO_HPP_ */

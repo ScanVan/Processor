@@ -226,6 +226,7 @@ public:
 class ModelViewPoint {
 public:
 	cv::Matx13f position;
+	cv::Matx33f rotationRelative;
 	// add rotation matrix
 
 	ModelViewPoint() {
@@ -233,11 +234,14 @@ public:
 	ModelViewPoint(cv::Matx13f position) :
 			position(position) {
 	}
+	ModelViewPoint(cv::Matx13f position, cv::Matx33f rotationRelative) :
+			position(position), rotationRelative(rotationRelative) {
+	}
 };
 
 class Model {
 public:
-	std::vector<ModelViewPoint> cameraPositions;
+	std::vector<ModelViewPoint> viewPoints;
 	std::vector<ModelFeature> features;
 
 	Model() {
