@@ -370,7 +370,7 @@ void pose_estimation (const std::vector<Vec_Points<T>> &p3d_liste, const T error
 		}
 	}
 
-	pose_scene(p3d_liste, sv_u_liste, sv_r_liste, sv_t_liste, sv_scene, positions);
+ 	pose_scene(p3d_liste, sv_u_liste, sv_r_liste, sv_t_liste, sv_scene, positions);
 
 }
 

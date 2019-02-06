@@ -87,8 +87,12 @@ void procFeatures() {
 		);
 	    akaze->detectAndCompute(filterImg, Mat(), filtersKpts, filtersDesc);
 //	}
+	string featuresPathsPrefix = "MeshroomCache/FeatureExtraction/43bafc83de5de3557584a50f0c39ab0d27158f0a";
+	string featuresPaths[] = {"1277586604.sift.feat", "1751012905.sift.feat", "1777025577.sift.feat"};
+	string matchesPathsPrefix = "MeshroomCache/FeatureMatching/1dd0869bd7635aa5601b17acf613edb9b405ca51";
+	string matchesPaths[] = {"","1277586604.matches.txt", "1751012905.matches.txt"};
 
-
+	int imageId = 0;
 	for (;;) {
 		std::shared_ptr<Omni> receivedPairImages { };
 		receivedPairImages = imgProcQueue.wait_pop();
@@ -96,21 +100,65 @@ void procFeatures() {
 		ss << "=========================" << std::endl << "Received pair images " << receivedPairImages->idString() << std::endl << "=========================" << std::endl;
 		print (ss.str());
 
-		auto featuredImages = extractFeatures(receivedPairImages, mask);
+		if(imageId == 3) sleep(10000000);
+		shared_ptr<OmniWithFeatures> featuredImages(new OmniWithFeatures(receivedPairImages));
+		ifstream featureFile;
+		featureFile.open(featuresPathsPrefix + "/" + featuresPaths[imageId]);
+		KeyPoint kp;
+	    float dummy;
+	    while (featureFile >> kp.pt.x >> kp.pt.y >> dummy >> dummy )
+	    {
+	        featuredImages->kpts.push_back(kp);
+	    }
+
+//		auto featuredImages = extractFeatures(receivedPairImages, mask);
 
 		v.push_back(featuredImages);
 		if (v.size() == 2) {
-			lp.push_back(omniMatching (v[0], v[1]));
+			std::shared_ptr<PairWithMatches> p1(new  PairWithMatches{v[0], v[1]});
+			ifstream featureFile;
+			featureFile.open(matchesPathsPrefix + "/" + matchesPaths[imageId]);
+			string dummyStr;
+			int dummyInt;
+			featureFile >> dummyInt >> dummyInt;
+			featureFile >> dummyInt;
+			featureFile >> dummyStr >> dummyInt;
+
+//			for(int idx = 0;idx < 3;idx++) std::getline(featureFile, dummyStr);
+			DMatch m;
+		    while (featureFile >> m.queryIdx >> m.trainIdx)
+		    {
+		    	if(m.queryIdx > 10000)
+		    		break;
+		    	KeyPoint f0 = v[0]->kpts[m.queryIdx];
+		    	KeyPoint f1 = v[1]->kpts[m.trainIdx];
+		    	if(!mask->at<uint8_t>(f0.pt.y, f0.pt.x))
+		    		continue;
+		    	if(!mask->at<uint8_t>(f1.pt.y, f1.pt.x))
+		    		continue;
+//		    	if()
+		        p1->matches.push_back(m);
+		    }
+			lp.push_back(p1);
+//			lp.push_back(omniMatching (v[0], v[1]));
 			v[0]=v[1];
 			v.pop_back();
 		}
 
 		if (lp.size() == 2) {
 			std::shared_ptr<TripletsWithMatches> p1 = commonPointsComputation (lp[0], lp[1]);
+			ofstream myfile;
+			myfile.open ("matches.txt");
+			for(auto m : p1->matches) {
+				myfile << m[0] << " " << m[1] << " " << m[2] << std::endl;
+			}
+			myfile.flush();
+			myfile.close();
 			lp[0] = lp[1];
 			lp.pop_back();
 			tripletsProcQueue.push(p1);
 		}
+		imageId++;
 	}
 }
 
