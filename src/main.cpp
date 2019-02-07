@@ -56,6 +56,9 @@ void generatePairImages (Log *mt) {
 	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
 
+	//file_list.erase(file_list.begin(),file_list.begin()+3);
+	//file_list.erase(file_list.begin()+3, file_list.end());
+
 	// counter for the image number
 	int img_counter { 1 };
 

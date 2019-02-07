@@ -1,6 +1,21 @@
 #include "pipelineAlgo.hpp"
 
+class KeyPointPosition {
+public:
+	cv::Point2f p { };
+	KeyPointPosition( cv::Point2f &p ): p {p} {}
+	bool operator< (const KeyPointPosition a) const {
+		std::stringstream s1{};
+		s1 << std::setprecision(15) << p.x << p.y;
+		std::stringstream s2{};
+		s2 << std::setprecision(15) << a.p.x << a.p.y;
+		return (s1.str() < s2.str());
+
+	}
+};
+
 std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2) {
+
 
 	// Print out message on the console
 	std::stringstream ss {};
@@ -78,27 +93,99 @@ std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<Pa
 		}
 	}
 
+	// Calculates the frequency of usage of the keypoints
+
+	std::map<KeyPointPosition, int> k1 { };
+	std::map<KeyPointPosition, int> k2 { };
+	std::map<KeyPointPosition, int> k3 { };
+
+	for (auto match: t1->getMatchVector()) {
+		auto kp1 = t1->getImage()[0]->getKeyPoints()[match[0]].pt;
+		auto kp2 = t1->getImage()[1]->getKeyPoints()[match[1]].pt;
+		auto kp3 = t1->getImage()[2]->getKeyPoints()[match[2]].pt;
+		auto it = k1.find(kp1);
+		if (it!=k1.end()) {
+			k1[kp1]++;
+		} else {
+			k1[kp1] = 1;
+		}
+		auto it2 = k2.find(kp2);
+		if (it2 != k2.end()) {
+			k2[kp2]++;
+		} else {
+			k2[kp2] = 1;
+		}
+		auto it3 = k3.find(kp3);
+		if (it3 != k3.end()) {
+			k3[kp3]++;
+		} else {
+			k3[kp3] = 1;
+		}
+	}
+
+	std::vector<int> fq1{};
+	std::vector<int> fq2{};
+	std::vector<int> fq3{};
+	for (const auto &k:k1) {
+		fq1.push_back(k.second);
+	}
+	for (const auto &k : k2) {
+		fq2.push_back(k.second);
+	}
+	for (const auto &k : k3) {
+		fq3.push_back(k.second);
+	}
+	std::sort(fq1.begin(), fq1.end(), std::greater<int>());
+	std::sort(fq2.begin(), fq2.end(), std::greater<int>());
+	std::sort(fq3.begin(), fq3.end(), std::greater<int>());
+
+//	for (const auto &x : fq1) {
+//		std::cout << x << " ";
+//	}
+//	std::cout << std::endl << std::endl;
+//
+//	for (const auto &x : fq2) {
+//		std::cout << x << " ";
+//	}
+//	std::cout << std::endl << std::endl;
+//
+//	for (const auto &x : fq3) {
+//		std::cout << x << " ";
+//	}
+//	std::cout << std::endl << std::endl;
+//
+//	std::cout << std::accumulate(fq1.begin(), fq1.end(), 0.0) << std::endl;
+//	std::cout << std::accumulate(fq2.begin(), fq2.end(), 0.0) << std::endl;
+//	std::cout << std::accumulate(fq3.begin(), fq3.end(), 0.0) << std::endl;
+
+	// stores the result in the Triplet
+	t1->setFrequencyMatches1(fq1);
+	t1->setFrequencyMatches2(fq2);
+	t1->setFrequencyMatches3(fq3);
 
 #ifdef DISPLAY_TRIPLET_MATCHES
 	{
-		RNG rng(12345);
+		cv::RNG rng(12345);
 		for(int repeat = 0;repeat < 1;repeat++){
-			int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
-			Mat res(w, h, CV_8UC3, Scalar(0,0,0));
-			t1->imgs[repeat]->omni->img.copyTo(res);
+			int w { t1->getImage()[0]->getOmni()->getImage().cols }, h { t1->getImage()[0]->getOmni()->getImage().rows };
+			cv::Mat res(w, h, CV_8UC3, cv::Scalar(0,0,0));
+			t1->getImage()[repeat]->getOmni()->getImage().copyTo(res);
 //			for(auto match : t1->matches){
 //				circle(res, t1->imgs[0]->kpts[match[0]].pt,10,Scalar(0,255,0),2);
 //			}
-			for(auto match : t1->matches){
-				for(int idx = 0;idx < 2;idx++){
-					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-					line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+			for(auto match : t1->getMatchVector()){
+				cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+				for(int idx = 1;idx < 2;idx++){
+					cv::line(res, t1->getImage()[idx]->getKeyPoints()[match[idx]].pt, t1->getImage()[idx + 1]->getKeyPoints()[match[idx+1]].pt, color, 2);
 				}
-//				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+				cv::circle(res, t1->getImage()[repeat+1]->getKeyPoints()[match[repeat+1]].pt,10,cv::Scalar(0,255,0),2);
 			}
-			namedWindow( "miaou", WINDOW_KEEPRATIO );
-			imshow( "miaou", res);
-			waitKey(0);
+
+			std::string filename {t1->getImage()[0]->getOmni()->getImgName() + "_" +t1->getImage()[1]->getOmni()->getImgName() + "_" + t1->getImage()[2]->getOmni()->getImgName() + ".jpg" };
+			cv::imwrite(filename, res);
+			cv::namedWindow( "Matches", cv::WINDOW_KEEPRATIO );
+			cv::imshow( "Matches", res);
+			cv::waitKey(0);
 		}
 	}
 
@@ -106,22 +193,22 @@ std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<Pa
 
 #ifdef DISPLAY_TRIPLET_MATCHES_INDIVIDUAL
 	{
-		RNG rng(12345);
-		for(auto match : t1->matches){
+		cv::RNG rng(12345);
+		for(auto match : t1->getMatchVector()){
 			for(int repeat = 0;repeat < 3;repeat++){
-				int w=t1->imgs[0]->omni->img.cols,h=t1->imgs[0]->omni->img.rows;
-				Mat res(w, h, CV_8UC3, Scalar(0,0,0));
-				t1->imgs[repeat]->omni->img.copyTo(res);
+				int w {t1->getImage()[0]->getOmni()->getImage().cols}, h {t1->getImage()[0]->getOmni()->getImage().rows};
+				cv::Mat res(w, h, CV_8UC3, cv::Scalar(0,0,0));
+				t1->getImage()[repeat]->getOmni()->getImage().copyTo(res);
 				for(int idx = 0;idx < 2;idx++){
-					Scalar color = Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-					line(res, t1->imgs[idx]->kpts[match[idx]].pt, t1->imgs[idx + 1]->kpts[match[idx+1]].pt, color, 2);
+					cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
+					cv::line(res, t1->getImage()[idx]->getKeyPoints()[match[idx]].pt, t1->getImage()[idx + 1]->getKeyPoints()[match[idx+1]].pt, color, 2);
 				}
 
-				circle(res, t1->imgs[repeat]->kpts[match[repeat]].pt,10,Scalar(0,255,0),2);
+				cv::circle(res, t1->getImage()[repeat]->getKeyPoints()[match[repeat]].pt,10,cv::Scalar(0,255,0),2);
 
-				namedWindow( "miaou", WINDOW_KEEPRATIO );
-				imshow( "miaou", res);
-				waitKey(0);
+				cv::namedWindow( "Matches", cv::WINDOW_KEEPRATIO );
+				cv::imshow( "Matches", res);
+				cv::waitKey(0);
 			}
 		}
 	}

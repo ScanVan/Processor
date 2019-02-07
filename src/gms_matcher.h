@@ -37,6 +37,7 @@
 using namespace std;
 using namespace cv;
 
+// changed threshold to have less matches
 #define THRESH_FACTOR 6
 
 // 8 possible rotation and each one is 3 X 3 

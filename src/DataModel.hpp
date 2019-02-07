@@ -175,6 +175,9 @@ class TripletsWithMatches {
 private:
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
 	std::vector<std::vector<int>> matches {};
+	std::vector<int> freqMatches1 {};
+	std::vector<int> freqMatches2 {};
+	std::vector<int> freqMatches3 {};
 public:
 
 	TripletsWithMatches() {
@@ -186,6 +189,24 @@ public:
 	}
 	std::vector<std::vector<int>> & getMatchVector() {
 		return matches;
+	}
+	void setFrequencyMatches1(const std::vector<int> &f) {
+		freqMatches1 = f;
+	}
+	void setFrequencyMatches2(const std::vector<int> &f) {
+		freqMatches2 = f;
+	}
+	void setFrequencyMatches3(const std::vector<int> &f) {
+		freqMatches3 = f;
+	}
+	std::vector<int> & getFrequencyMatches1() {
+		return freqMatches1;
+	}
+	std::vector<int> & getFrequencyMatches2() {
+		return freqMatches2;
+	}
+	std::vector<int> & getFrequencyMatches3() {
+		return freqMatches3;
 	}
 	std::string getTripletImageName() {
 		return imgs[0]->getImgName() + "_" + imgs[1]->getImgName() + "_" + imgs[2]->getImgName();

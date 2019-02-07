@@ -36,7 +36,8 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 
 #ifdef USE_GMS_FILTER
     std::vector<cv::DMatch> matches_all;
-    cv::BFMatcher matcher(NORM_HAMMING);
+    cv::BFMatcher matcher(NORM_HAMMING, true);
+    // Second param is boolean variable, crossCheck which is false by default. If it is true, Matcher returns only those matches with value (i,j) such that i-th descriptor in set A has j-th descriptor in set B as the best match and vice-versa. That is, the two features in both sets should match each other. It provides consistent result, and is a good alternative to ratio test proposed by D.Lowe in SIFT paper.
 	matcher.match(im1->getDesc(), im2->getDesc(), matches_all);
 
 	// GMS filter
@@ -55,13 +56,17 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 		}
 	}
 
-//	cv::Mat outImg{};
-//
-//	cv::drawMatches(p1->getImage1()->getOmni()->getImage(), p1->getKeyPoints1(), p1->getImage2()->getOmni()->getImage(), p1->getKeyPoints2(), p1->getMatches(), outImg);
-//
-//	namedWindow("Matches", cv::WINDOW_NORMAL);
-//	imshow ("Matches", outImg);
-//	waitKey(0);
+/*
+	cv::Mat outImg{};
+
+	cv::drawMatches(p1->getImage1()->getOmni()->getImage(), p1->getKeyPoints1(), p1->getImage2()->getOmni()->getImage(), p1->getKeyPoints2(), p1->getMatches(), outImg);
+
+	std::string filename {p1->getImage1()->getOmni()->getImgName() + "_" +p1->getImage2()->getOmni()->getImgName() + ".jpg" };
+	cv::imwrite(filename, outImg);
+*/
+	//namedWindow("Matches", cv::WINDOW_NORMAL);
+	//imshow ("Matches", outImg);
+	//waitKey(0);
 
 
 #endif

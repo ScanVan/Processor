@@ -48,7 +48,7 @@ void write_1_features(const std::shared_ptr<EquirectangularWithFeatures> &featur
 
 	// write features extracted for each image into files
 	// open the file to write the features
-	std::ofstream outputFile { pathOutputFeature };
+	std::ofstream outputFile { pathOutputFeature, std::ios::trunc };
 	// go over all the features extracted and write them into the file
 	for (const auto kp : featuredImages->getKeyPoints()) {
 		outputFile << std::setprecision(15) << kp.pt.x << " " << kp.pt.y << std::endl;
@@ -61,7 +61,7 @@ void write_2_matches(const std::shared_ptr<PairWithMatches> &matches) {
 
 	std::string pathOutputMatches = outputFolder + "/" + outputMatches + "/" + matches->getPairImageName();
 	// open the file to write the matches
-	std::ofstream outputFileMatches { pathOutputMatches };
+	std::ofstream outputFileMatches { pathOutputMatches, std::ios::trunc };
 
 	// Keypoints of the first image
 	std::vector<cv::KeyPoint> kp1 = matches->getKeyPoints1();
@@ -85,7 +85,7 @@ void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
 
 	std::string pathOutputTriplets = outputFolder + "/" + outputTriplets + "/" + p1->getTripletImageName();
 	// open the file to write the matches
-	std::ofstream outputFileTriplets { pathOutputTriplets };
+	std::ofstream outputFileTriplets { pathOutputTriplets, std::ios::trunc };
 
 	// Keypoints of the first image of the first pair
 	std::vector<cv::KeyPoint> kpt1 = p1->getImage()[0]->getKeyPoints();
@@ -108,6 +108,23 @@ void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
 				<< kpt3[v[2]].pt.x << " "
 				<< kpt3[v[2]].pt.y << std::endl;
 	}
+
+	// Outputs the frequency of usage of the keypoints to check that the same
+	// keypoint is not used many times
+	outputFileTriplets << std::endl;
+	for (const auto &x : p1->getFrequencyMatches1()) {
+		outputFileTriplets << x << " ";
+	}
+	outputFileTriplets << std::endl << std::endl;
+	for (const auto &x : p1->getFrequencyMatches2()) {
+		outputFileTriplets << x << " ";
+	}
+	outputFileTriplets << std::endl << std::endl;
+	for (const auto &x : p1->getFrequencyMatches3()) {
+		outputFileTriplets << x << " ";
+	}
+	outputFileTriplets << std::endl << std::endl;
+
 	outputFileTriplets.close();
 }
 
@@ -116,7 +133,7 @@ void write_4_spherical(const std::shared_ptr<TripletsWithMatches> &triplets, con
 
 	std::string pathOutputSpherical = outputFolder + "/" + outputSpherical + "/" + triplets->getTripletImageName();
 	// open the file to write the matches
-	std::ofstream outputFileSpherical { pathOutputSpherical };
+	std::ofstream outputFileSpherical { pathOutputSpherical, std::ios::trunc };
 
 	// loop over the vector of spherical coordinates
 	for (size_t i { 0 }; i < p3d_liste[0].size(); ++i) {
@@ -140,7 +157,7 @@ void write_5_pose_3(const std::shared_ptr<TripletsWithMatches> &triplets,
 
 	std::string pathOutputPose3 = outputFolder + "/" + outputPose3 + "/" + triplets->getTripletImageName();
 	// open the file to write the matches
-	std::ofstream outputFilePose3 { pathOutputPose3 };
+	std::ofstream outputFilePose3 { pathOutputPose3, std::ios::trunc };
 
 	// Output the rotation and translation matrices
 	// Format (R12)(t12')(R23)(t23')
@@ -185,7 +202,7 @@ void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, con
 
 	std::string pathOutputPointCloud3 = outputFolder + "/" + outputPointCloud3 + "/" + triplets->getTripletImageName();
 	// open the file to write the matches
-	std::ofstream outputFilePointCloud3 { pathOutputPointCloud3 };
+	std::ofstream outputFilePointCloud3 { pathOutputPointCloud3, std::ios::trunc };
 
 	// loop over the vector of point cloud
 	for (size_t i { 0 }; i < sv_scene.size(); ++i) {
@@ -203,8 +220,8 @@ void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, con
 
 
 void writePly(std::string file, std::vector<ModelFeature> &features){
-	std::ofstream s{};
-	s.open (file);
+	std::ofstream s {};
+	s.open (file, std::ios::trunc);
 
 	s << "ply" << std::endl;
 	s << "format ascii 1.0 " << std::endl;
