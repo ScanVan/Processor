@@ -6,9 +6,9 @@ std::shared_ptr<EquirectangularWithFeatures> extractFeatures(std::shared_ptr<Equ
 	std::shared_ptr<EquirectangularWithFeatures> featured { new EquirectangularWithFeatures { omni } };
 
 #ifdef USE_ORB_FEATURE
-	Ptr<ORB> orb = ORB::create(1000);
+	cv::Ptr<cv::ORB> orb = cv::ORB::create(1000);
 	orb->setFastThreshold(0);
-	orb->detectAndCompute(omni->img, *mask, featured->kpts, featured->desc);
+	orb->detectAndCompute(omni->getImage(), *mask, featured->getKeyPoints(), featured->getDesc());
 #endif
 
 #ifdef USE_AKAZE_FEATURE

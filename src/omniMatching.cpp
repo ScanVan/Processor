@@ -21,7 +21,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 #ifdef USE_KNN_MATCHER
     BFMatcher matcher(NORM_HAMMING);
     vector<vector<DMatch>> nn_matches;
-    matcher.knnMatch(im1->desc, im2->desc, nn_matches, 2);
+    matcher.knnMatch(im1->getDesc(), im2->getDesc(), nn_matches, 2);
 
 	const float nn_match_ratio = 0.8f;   // Nearest neighbor matching ratio
     for(auto matches : nn_matches) {
@@ -29,7 +29,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
         float dist2 = matches[1].distance;
 
         if(dist1 < nn_match_ratio * dist2) {
-            p1->matches.push_back(matches[0]);
+            p1->getMatches().push_back(matches[0]);
         }
     }
 #endif
@@ -44,7 +44,6 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 	std::vector<bool> vbInliers;
 	gms_matcher gms(im1->getKeyPoints(), (im1->getOmni()->getImage()).size(), im2->getKeyPoints(), (im2->getOmni()->getImage()).size(), matches_all);
 	int num_inliers = gms.GetInlierMask(vbInliers, false, false);
-	cout << "Get total " << num_inliers << " matches." << endl;
 
 	// collect matches
 	for (size_t i = 0; i < vbInliers.size(); ++i)
@@ -56,8 +55,9 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 		}
 	}
 
-/*
-	cv::Mat outImg{};
+	cout << "Get total " << p1->getMatches().size() << " matches." << endl;
+
+	/*cv::Mat outImg{};
 
 	cv::drawMatches(p1->getImage1()->getOmni()->getImage(), p1->getKeyPoints1(), p1->getImage2()->getOmni()->getImage(), p1->getKeyPoints2(), p1->getMatches(), outImg);
 

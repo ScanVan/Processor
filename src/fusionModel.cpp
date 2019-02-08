@@ -34,7 +34,7 @@ void fusionModel (Model *m1, Model *m2) {
 		feature.position = translation + scaleFactor * (source.position* rotation);
 		m1->features.push_back(feature);
 	}
-	ModelViewPoint m1C3;
+	ModelViewPoint m1C3 {};
 	m1C3.position = translation + scaleFactor * (m2C3*rotation);
 	m1->viewPoints.push_back(m1C3);
 }
@@ -56,8 +56,8 @@ void fusionModel2 (Model *m1, Model *m2, uint32_t commonViewPointsCount) {
 	}
 
 	uint32_t vpm1 = m1->viewPoints.size() - commonViewPointsCount;
-	double scaleFactor = norm(m1->viewPoints[vpm1+1].position-m1->viewPoints[vpm1].position)
-					   / norm(m2->viewPoints[1].position - m2->viewPoints[0].position);
+	double scaleFactor { norm(m1->viewPoints[vpm1+1].position-m1->viewPoints[vpm1].position)
+						/ norm(m2->viewPoints[1].position - m2->viewPoints[0].position) };
 
 	for(auto &x : m2->viewPoints) x.position *= scaleFactor;
 	for(auto &x : m2->features) x.position *= scaleFactor;
@@ -71,12 +71,12 @@ void fusionModel2 (Model *m1, Model *m2, uint32_t commonViewPointsCount) {
 
 	for(uint32_t i = commonViewPointsCount;i < m2->viewPoints.size();i++){
 		auto vp = m2->viewPoints[i];
-		vp.position = translation + vp.position * rotation;
+		vp.position = translation + (rotation * vp.position.t()).t();
 		m1->viewPoints.push_back(vp);
 	}
 
 	for(auto f : m2->features){
-		f.position = translation + f.position * rotation;
+		f.position = translation + (rotation * f.position.t()).t();
 		m1->features.push_back(f);
 	}
 

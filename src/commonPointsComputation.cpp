@@ -166,7 +166,7 @@ std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<Pa
 #ifdef DISPLAY_TRIPLET_MATCHES
 	{
 		cv::RNG rng(12345);
-		for(int repeat = 0;repeat < 1;repeat++){
+		for(int repeat = 0;repeat < 3;repeat++){
 			int w { t1->getImage()[0]->getOmni()->getImage().cols }, h { t1->getImage()[0]->getOmni()->getImage().rows };
 			cv::Mat res(w, h, CV_8UC3, cv::Scalar(0,0,0));
 			t1->getImage()[repeat]->getOmni()->getImage().copyTo(res);
@@ -175,10 +175,10 @@ std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<Pa
 //			}
 			for(auto match : t1->getMatchVector()){
 				cv::Scalar color = cv::Scalar(rng.uniform(0,255), rng.uniform(0, 255), rng.uniform(0, 255));
-				for(int idx = 1;idx < 2;idx++){
+				for(int idx = 0;idx < 2;idx++){
 					cv::line(res, t1->getImage()[idx]->getKeyPoints()[match[idx]].pt, t1->getImage()[idx + 1]->getKeyPoints()[match[idx+1]].pt, color, 2);
 				}
-				cv::circle(res, t1->getImage()[repeat+1]->getKeyPoints()[match[repeat+1]].pt,10,cv::Scalar(0,255,0),2);
+				cv::circle(res, t1->getImage()[repeat]->getKeyPoints()[match[repeat]].pt,10,cv::Scalar(0,255,0),2);
 			}
 
 			std::string filename {t1->getImage()[0]->getOmni()->getImgName() + "_" +t1->getImage()[1]->getOmni()->getImgName() + "_" + t1->getImage()[2]->getOmni()->getImgName() + ".jpg" };

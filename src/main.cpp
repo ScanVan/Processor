@@ -55,6 +55,23 @@ void generatePairImages (Log *mt) {
 
 	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
+/*
+	auto it1 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161153-843291.bmp");
+//	auto it = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-160949-843297.bmp");
+//	auto it = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161147-843295.bmp");
+//	file_list.erase(file_list.begin(), it);
+	file_list.erase(file_list.begin(), it1);
+	auto it2 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161314-343305.bmp");
+	file_list.erase(it2, file_list.end());
+	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+*/
+
+	/*auto it1 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161314-343305.bmp");
+	file_list.erase(file_list.begin(), it1);
+	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");
+	file_list.erase(it2, file_list.end());
+	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+*/
 
 	//file_list.erase(file_list.begin(),file_list.begin()+3);
 	//file_list.erase(file_list.begin()+3, file_list.end());
@@ -252,8 +269,8 @@ void ProcPose (Log *mt) {
 
 		Vec_Points<double> sv_scene { };
 		std::vector<Points<double>> positions { Points<double>(), Points<double>(), Points<double>() };
-		std::vector<Points<double>> sv_t_liste { Points<double>(), Points<double>(), Points<double>() };
-		std::vector<Mat_33<double>> sv_r_liste { Mat_33<double>(), Mat_33<double>(), Mat_33<double>() };
+		std::vector<Points<double>> sv_t_liste { Points<double>(), Points<double>()};
+		std::vector<Mat_33<double>> sv_r_liste { Mat_33<double>(), Mat_33<double>()};
 
 		double error_max { 1e-8 };
 
@@ -282,9 +299,10 @@ void ProcPose (Log *mt) {
 		write_6_sparse_3 (receivedTripletsImages, sv_scene);
 		//==========================================================================================
 
-/*
 
+		// The new model to add
 		Model m2 { };
+		// the position of the center of the triplets
 		cv::Matx13f modelCenter(0, 0, 0);
 
 		// calculates the mean position of the triplets
@@ -294,7 +312,7 @@ void ProcPose (Log *mt) {
 		}
 		modelCenter = 1.0 / positions.size() * modelCenter;
 
-		// calculates the average distance of the reconstracted points with respect to the mean of the positions
+		// calculates the average distance of the reconstructed points with respect to the center of the triplets
 		double averageDistance = 0;
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
@@ -308,32 +326,44 @@ void ProcPose (Log *mt) {
 		// copies to features vector of the model the points whose average distance is relatively close
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
-				continue;
+			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
+				continue;*/
 			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
 
-		// copies to keypoints vector the positions of the spheres * 1000
+		// copies to camera positions vector the positions of the spheres
 		for (size_t i { 0 }; i < positions.size(); ++i) {
-			Points<double> f = positions[i];
-			m2.cameraPositions.push_back(ModelViewPoint(Matx13f(f[0], f[1], f[2])));
+			//Points<double> f = positions[i];
+			// m2, i.e. the new model of the triplet contains the positions of the camera where the first position is (0,0,0)
+			// and the rotation matrices, the first rotation matrix is zeros(3,3), the second sv_r_liste[0], i.e. r12, and the third sv_r_liste[1], i.e. r23
+			if (i==0) {
+				m2.viewPoints.push_back(ModelViewPoint(cv::Matx13f::zeros(), cv::Matx33f::eye()));
+			} else if (i > 0) {
+				Mat_33<double> & m1 = sv_r_liste[i - 1];
+				Points<double> f = positions[i];
+				cv::Matx33d mat1 { m1[0][0], m1[0][1], m1[0][2], m1[1][0], m1[1][1], m1[1][2], m1[2][0], m1[2][1], m1[2][2] };
+				m2.viewPoints.push_back(ModelViewPoint(cv::Matx13f(f[0], f[1], f[2]), mat1));
+			}
 		}
 
-		// writes the estimated triplet model
+		/*// writes the estimated triplet model
 		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
-		writePly(plyFileName, m2.features);
+		writePly(plyFileName, m2.features);*/
 
 		//-----------------------------------------------------
-		fusionModel(&m, &m2);
+		fusionModel2(&m, &m2, 2);
 		//-----------------------------------------------------
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
 		//writePly(fusionFileName, m.features);
-*/
+
 
 		counter++;
 	}
+	std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
+	writePly(fusionFileName, m.features);
+
 	// signals the end of pose estimation
 	mt->terminateProcPose = true;
 }
