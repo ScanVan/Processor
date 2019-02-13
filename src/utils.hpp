@@ -13,6 +13,7 @@ class ModelFeature;
 class EquirectangularWithFeatures;
 class PairWithMatches;
 class TripletsWithMatches;
+class Model;
 
 #define DEBUG_PTR(ptr) auto ptr##_ = ptr.get();
 
@@ -28,10 +29,12 @@ void write_5_pose_3(const std::shared_ptr<TripletsWithMatches> &triplets,
 					const int initialNumberFeatures,
 					const int finalNumberFeatures);
 void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, const Vec_Points<double> &sv_scene);
-
+void write_7_odometry (const Model &m);
+void write_8_progressiveModel (const Model &m);
+void write_9_finalModel (const Model &m);
 
 void print (std::string st);
-void writePly(std::string file, std::vector<ModelFeature> &features);
+void writePly(std::string file, const std::vector<ModelFeature> &features);
 void writePly(const std::string &file, const Vec_Points<double> &features);
 std::vector<ModelFeature> keypointsToFeatures(std::vector<ModelViewPoint> *keypoints);
 cv::Matx13f cross(cv::Matx13f a, cv::Matx13f b);

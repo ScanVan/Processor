@@ -43,7 +43,8 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 	// GMS filter
 	std::vector<bool> vbInliers;
 	gms_matcher gms(im1->getKeyPoints(), (im1->getOmni()->getImage()).size(), im2->getKeyPoints(), (im2->getOmni()->getImage()).size(), matches_all);
-	int num_inliers = gms.GetInlierMask(vbInliers, false, false);
+	//int num_inliers = gms.GetInlierMask(vbInliers, false, false);
+	gms.GetInlierMask(vbInliers, false, false);
 
 	// collect matches
 	for (size_t i = 0; i < vbInliers.size(); ++i)

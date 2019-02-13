@@ -15,7 +15,7 @@
 // input main folder
 const std::string inputFolder { "data_in" };
 // input folder where the input images are located
-const std::string inputDataSet { "0_dataset" };
+const std::string inputDataSet { "0_dataset_20180904-164403_HESOutdoorCircular" };
 // input folder where the mask is located
 const std::string inputMask { "1_mask" };
 // name of the file of the mask
@@ -35,5 +35,11 @@ const std::string outputSpherical { "4_spherical" };
 const std::string outputPose3 { "5_pose_3" };
 // output folder where the point cloud of the triplets are written
 const std::string outputPointCloud3 { "6_sparse_3" };
+// output folder where the odometry results are written
+const std::string outputOdometry { "7_odometry" };
+// output folder where the progressive model is written
+const std::string outputProgressiveModel { "8_models" };
+// output file name of the merged model
+const std::string outputMergedModelFileName { "sparse.ply" };
 
 #endif /* SRC_CONFIG_HPP_ */

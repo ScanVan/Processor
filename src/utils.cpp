@@ -12,33 +12,63 @@ void print (std::string st) {
 }
 
 void checkFolders() {
-// checks if the folders to write the outputs exist
-// if not create them
 
-	// check if folder to write the features exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputFeatures)) {
-		fs::create_directory(outputFolder + "/" + outputFeatures);
+	// checks if the folder to write the outputs exist
+	// if it exists, deletes all the content and create a new empty directory
+
+	// folder that contains the feature points for each image
+	if (fs::exists(outputFolder + "/" + outputFeatures)) {
+		fs::remove_all(outputFolder + "/" + outputFeatures);
 	}
-	// check if folder to write the matches for a pair of features exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputMatches)) {
-		fs::create_directory(outputFolder + "/" + outputMatches);
+	fs::create_directory(outputFolder + "/" + outputFeatures);
+
+	// folder that contains the feature matches for each pair images
+	if (fs::exists(outputFolder + "/" + outputMatches)) {
+		fs::remove_all(outputFolder + "/" + outputMatches);
 	}
-	// check if folder to write the triplets exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputTriplets)) {
-		fs::create_directory(outputFolder + "/" + outputTriplets);
+	fs::create_directory(outputFolder + "/" + outputMatches);
+
+	// folder that contains the triplets
+	if (fs::exists(outputFolder + "/" + outputTriplets)) {
+		fs::remove_all(outputFolder + "/" + outputTriplets);
 	}
-	// check if folder to write the spherical coordinates exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputSpherical)) {
-		fs::create_directory(outputFolder + "/" + outputSpherical);
+	fs::create_directory(outputFolder + "/" + outputTriplets);
+
+	// folder that contains the spherical coordinates
+	if (fs::exists(outputFolder + "/" + outputSpherical)) {
+		fs::remove_all(outputFolder + "/" + outputSpherical);
 	}
-	// check if folder to write the rotation and translation matrices exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputPose3)) {
-		fs::create_directory(outputFolder + "/" + outputPose3);
+	fs::create_directory(outputFolder + "/" + outputSpherical);
+
+	// folder that contains the rotation and translation matrices
+	if (fs::exists(outputFolder + "/" + outputPose3)) {
+		fs::remove_all(outputFolder + "/" + outputPose3);
 	}
-	// check if folder to write sparse point cloud of the triplets exists, if not create it
-	if (!fs::exists(outputFolder + "/" + outputPointCloud3)) {
-		fs::create_directory(outputFolder + "/" + outputPointCloud3);
+	fs::create_directory(outputFolder + "/" + outputPose3);
+
+	// folder that conatains the sparse point cloud of the triplets
+	if (fs::exists(outputFolder + "/" + outputPointCloud3)) {
+		fs::remove_all(outputFolder + "/" + outputPointCloud3);
 	}
+	fs::create_directory(outputFolder + "/" + outputPointCloud3);
+
+	// folder that contains the odometry results
+	if (fs::exists(outputFolder + "/" + outputOdometry)) {
+		fs::remove_all(outputFolder + "/" + outputOdometry);
+	}
+	fs::create_directory(outputFolder + "/" + outputOdometry);
+
+	// folder that contains the progressive models
+	if (fs::exists(outputFolder + "/" + outputProgressiveModel)) {
+		fs::remove_all(outputFolder + "/" + outputProgressiveModel);
+	}
+	fs::create_directory(outputFolder + "/" + outputProgressiveModel);
+
+	// if the sparse model exists, it deletes it
+	if (fs::exists(outputFolder + "/" + outputMergedModelFileName)) {
+		fs::remove(outputFolder + "/" + outputMergedModelFileName);
+	}
+
 }
 
 void write_1_features(const std::shared_ptr<EquirectangularWithFeatures> &featuredImages) {
@@ -109,21 +139,21 @@ void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
 				<< kpt3[v[2]].pt.y << std::endl;
 	}
 
-	// Outputs the frequency of usage of the keypoints to check that the same
-	// keypoint is not used many times
-	outputFileTriplets << std::endl;
-	for (const auto &x : p1->getFrequencyMatches1()) {
-		outputFileTriplets << x << " ";
-	}
-	outputFileTriplets << std::endl << std::endl;
-	for (const auto &x : p1->getFrequencyMatches2()) {
-		outputFileTriplets << x << " ";
-	}
-	outputFileTriplets << std::endl << std::endl;
-	for (const auto &x : p1->getFrequencyMatches3()) {
-		outputFileTriplets << x << " ";
-	}
-	outputFileTriplets << std::endl << std::endl;
+//	// Outputs the frequency of usage of the keypoints to check that the same
+//	// keypoint is not used many times
+//	outputFileTriplets << std::endl;
+//	for (const auto &x : p1->getFrequencyMatches1()) {
+//		outputFileTriplets << x << " ";
+//	}
+//	outputFileTriplets << std::endl << std::endl;
+//	for (const auto &x : p1->getFrequencyMatches2()) {
+//		outputFileTriplets << x << " ";
+//	}
+//	outputFileTriplets << std::endl << std::endl;
+//	for (const auto &x : p1->getFrequencyMatches3()) {
+//		outputFileTriplets << x << " ";
+//	}
+//	outputFileTriplets << std::endl << std::endl;
 
 	outputFileTriplets.close();
 }
@@ -218,8 +248,64 @@ void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, con
 
 }
 
+void write_7_odometry (const Model &m) {
+// writes the rotation and translation absolutes for each camera position
 
-void writePly(std::string file, std::vector<ModelFeature> &features){
+	// reverse iterator to the camera view points
+	auto it2 = m.viewPoints.rbegin();
+
+	for (auto it = m.imgNames.rbegin(); it != m.imgNames.rend(); ++it, ++it2) {
+		std::string pathOutputOdometry = outputFolder + "/" + outputOdometry + "/" + *it;
+		// Check if the file exists
+		if (fs::exists(pathOutputOdometry)) {
+			break;
+		}
+		// open the file to write the matches
+		std::ofstream outputFileOdometry { pathOutputOdometry, std::ios::trunc };
+
+		auto &rot = it2->rotationAbsolute;
+		auto &pos = it2->position;
+
+		// Output the rotation and translation matrices
+		// Format (R)(t')
+		//         3x3  3x1
+		outputFileOdometry << std::setprecision(15)
+					<< rot(0,0) << " "
+					<< rot(0,1) << " "
+					<< rot(0,2) << " "
+					<< pos(0) << std::endl;
+		outputFileOdometry << std::setprecision(15)
+					<< rot(1,0) << " "
+					<< rot(1,1) << " "
+					<< rot(1,2) << " "
+					<< pos(1) << std::endl;
+		outputFileOdometry << std::setprecision(15)
+					<< rot(2,0) << " "
+					<< rot(2,1) << " "
+					<< rot(2,2) << " "
+					<< pos(2) << std::endl;
+
+		outputFileOdometry.close();
+
+	}
+
+}
+
+void write_8_progressiveModel (const Model &m) {
+// write the point cloud of the merged model as it is added
+	std::string fusionFileName { outputFolder + "/" + outputProgressiveModel + "/" + std::to_string(m.viewPoints.size()) + ".ply" };
+	writePly(fusionFileName, m.features);
+}
+
+void write_9_finalModel (const Model &m) {
+// write the point cloud of the merged model
+
+	std::string fusionFileName { outputFolder + "/" + outputMergedModelFileName };
+	writePly(fusionFileName, m.features);
+}
+
+
+void writePly(std::string file, const std::vector<ModelFeature> &features){
 	std::ofstream s {};
 	s.open (file, std::ios::trunc);
 
@@ -265,7 +351,6 @@ void writePly(const std::string &file, const Vec_Points<double> &features){
 
 	s.close();
 }
-
 
 
 std::vector<ModelFeature> keypointsToFeatures(std::vector<ModelViewPoint> *keypoints){

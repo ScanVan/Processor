@@ -214,6 +214,15 @@ public:
 	std::shared_ptr<EquirectangularWithFeatures> * getImage() {
 		return imgs;
 	}
+	std::string getImageName1() {
+		return imgs[0]->getOmni()->getImgName();
+	}
+	std::string getImageName2() {
+		return imgs[1]->getOmni()->getImgName();
+	}
+	std::string getImageName3() {
+		return imgs[2]->getOmni()->getImgName();
+	}
 	int getImageNumber1() {
 		return imgs[0]->getOmni()->getImgNum();
 	}
@@ -232,7 +241,7 @@ typedef cv::Vec<uint8_t, 3> RGB888;
 
 class ModelFeature {
 public:
-	cv::Matx13f position;
+	cv::Matx13d position;
 	RGB888 color;
 	ModelFeature() {
 	}
@@ -246,9 +255,9 @@ public:
 
 class ModelViewPoint {
 public:
-	cv::Matx13f position;
-	cv::Matx33f rotationRelative;
-	// add rotation matrix
+	cv::Matx13d position;
+	cv::Matx33d rotationRelative; // relative rotation with respect to the previous camera position
+	cv::Matx33d rotationAbsolute; // absolute rotation with respect to the first image
 
 	ModelViewPoint() {
 	}
@@ -258,12 +267,17 @@ public:
 	ModelViewPoint(cv::Matx13f position, cv::Matx33f rotationRelative) :
 			position(position), rotationRelative(rotationRelative) {
 	}
+	ModelViewPoint(cv::Matx13f position, cv::Matx33f rotationRelative, cv::Matx33f rotationAbsolute) :
+			position(position), rotationRelative(rotationRelative), rotationAbsolute(rotationAbsolute) {
+	}
+
 };
 
 class Model {
 public:
 	std::vector<ModelViewPoint> viewPoints;
 	std::vector<ModelFeature> features;
+	std::vector<std::string> imgNames;
 
 	Model() {
 		std::stringstream ss { };
