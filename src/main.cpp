@@ -57,10 +57,16 @@ void generatePairImages (Log *mt) {
 	std::sort(file_list.begin(), file_list.end());
 
 //	auto it1 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161153-843291.bmp");
-//	auto it = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-160949-843297.bmp");
+
+//	auto it = std::find(file_list.begin(),file_list.end(),inputFolder + "/" + inputDataSet + "/" + "20181218-160949-843297.bmp");
+
 //	auto it = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161147-843295.bmp");
 //	file_list.erase(file_list.begin(), it);
-//	file_list.erase(file_list.begin(), it1);
+
+//	file_list.erase(file_list.begin(), file_list.begin()+35);
+//	file_list.erase(file_list.begin()+30, file_list.end());
+
+
 //	auto it2 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161314-343305.bmp");
 //	file_list.erase(it, file_list.end());
 	for (auto &n: file_list) {

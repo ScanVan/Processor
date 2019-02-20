@@ -245,10 +245,10 @@ public:
 	RGB888 color;
 	ModelFeature() {
 	}
-	ModelFeature(cv::Matx13f position) :
+	ModelFeature(cv::Matx13d position) :
 			position(position) {
 	}
-	ModelFeature(cv::Matx13f position, RGB888 color) :
+	ModelFeature(cv::Matx13d position, RGB888 color) :
 			position(position), color(color) {
 	}
 };
@@ -261,13 +261,13 @@ public:
 
 	ModelViewPoint() {
 	}
-	ModelViewPoint(cv::Matx13f position) :
+	ModelViewPoint(cv::Matx13d position) :
 			position(position) {
 	}
-	ModelViewPoint(cv::Matx13f position, cv::Matx33f rotationRelative) :
+	ModelViewPoint(cv::Matx13d position, cv::Matx33d rotationRelative) :
 			position(position), rotationRelative(rotationRelative) {
 	}
-	ModelViewPoint(cv::Matx13f position, cv::Matx33f rotationRelative, cv::Matx33f rotationAbsolute) :
+	ModelViewPoint(cv::Matx13d position, cv::Matx33d rotationRelative, cv::Matx33d rotationAbsolute) :
 			position(position), rotationRelative(rotationRelative), rotationAbsolute(rotationAbsolute) {
 	}
 

@@ -297,8 +297,18 @@ void write_8_progressiveModel (const Model &m) {
 	writePly(fusionFileName, m.features);
 }
 
-void write_9_finalModel (const Model &m) {
+void write_9_finalModel (Model &m) {
 // write the point cloud of the merged model
+
+/*  // This adds the positions of the cameras as red points on the model
+	// assigns a red color for the positions of the camera
+	RGB888 modelColor = RGB888(255, 0, 0);
+
+	for (size_t i { 0 }; i < m.viewPoints.size(); ++i) {
+		cv::Matx13d position = m.viewPoints[i].position;
+		m.features.push_back(ModelFeature(position, modelColor));
+	}
+*/
 
 	std::string fusionFileName { outputFolder + "/" + outputMergedModelFileName };
 	writePly(fusionFileName, m.features);

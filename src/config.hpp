@@ -15,7 +15,7 @@
 // input main folder
 const std::string inputFolder { "data_in" };
 // input folder where the input images are located
-const std::string inputDataSet { "0_dataset_20180904-164403_HESOutdoorCircular" };
+const std::string inputDataSet { "0_dataset_20181218-160912_SionOutdoor" };
 // input folder where the mask is located
 const std::string inputMask { "1_mask" };
 // name of the file of the mask

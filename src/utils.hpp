@@ -31,7 +31,7 @@ void write_5_pose_3(const std::shared_ptr<TripletsWithMatches> &triplets,
 void write_6_sparse_3 (const std::shared_ptr<TripletsWithMatches> &triplets, const Vec_Points<double> &sv_scene);
 void write_7_odometry (const Model &m);
 void write_8_progressiveModel (const Model &m);
-void write_9_finalModel (const Model &m);
+void write_9_finalModel (Model &m);
 
 void print (std::string st);
 void writePly(std::string file, const std::vector<ModelFeature> &features);
