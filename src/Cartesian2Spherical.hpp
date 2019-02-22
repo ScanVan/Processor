@@ -25,7 +25,7 @@ Points<double> convertCartesian2Spherical (double x, double y, int width, int he
 
 	return p;*/
 
-	// Implementation from Nils
+	/*// Implementation from Nils
 	// coordinate re-normalization
 	double tm1 { (x / width) * 2 * M_PI };
 	double tm2 { (0.5 - (y / height)) * M_PI };
@@ -36,6 +36,20 @@ Points<double> convertCartesian2Spherical (double x, double y, int width, int he
 	double p3 { sin(tm2) };
 
 	Points<double> p { p1, p2, p3 };
+*/
+
+	// Correction from Nils
+	double tm1 { ((x - 1) / width) * 2 * M_PI };
+	double tm2 { ((y / height) - 0.5) * M_PI };
+
+	// coordinate conversion
+	double p1 { cos(tm2) * cos(tm1) };
+	double p2 { cos(tm2) * sin(tm1) };
+	double p3 { sin(tm2) };
+
+	Points<double> p { p1, p2, p3 };
+
+
 
 	return p;
 

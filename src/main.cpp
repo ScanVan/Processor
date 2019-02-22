@@ -58,14 +58,13 @@ void generatePairImages (Log *mt) {
 
 //	auto it1 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161153-843291.bmp");
 
-//	auto it = std::find(file_list.begin(),file_list.end(),inputFolder + "/" + inputDataSet + "/" + "20181218-160949-843297.bmp");
 
-//	auto it = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161147-843295.bmp");
-//	file_list.erase(file_list.begin(), it);
+	/*auto it = std::find(file_list.begin(),file_list.end(),inputFolder + "/" + inputDataSet + "/" + "20181218-161515-093294.bmp");
+	file_list.erase(file_list.begin(), it);
 
-//	file_list.erase(file_list.begin(), file_list.begin()+35);
-//	file_list.erase(file_list.begin()+30, file_list.end());
-
+	it = std::find(file_list.begin(),file_list.end(),inputFolder + "/" + inputDataSet + "/" + "20181218-162021-343307.bmp");
+	file_list.erase(it, file_list.end());
+*/
 
 //	auto it2 = std::find(file_list.begin(),file_list.end(),"data_in/0_dataset/20181218-161314-343305.bmp");
 //	file_list.erase(it, file_list.end());
@@ -288,10 +287,19 @@ void ProcPose (Log *mt) {
 		int initialNumberFeatures = p3d_liste[0].size();
 
 		int numIter {};
+
 		// Only compute if there are features in the vector
 		if (initialNumberFeatures!=0) {
 			mt->start("5. Pose Estimation"); // measures the time of pose estimation algorithm
-			numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
+
+			for (int i = 0; i < 1; ++i) {
+				numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
+
+				filter_keypoints(p3d_liste, sv_scene, positions, p3d_liste);
+
+				std::cout << "Number of iterations pose estimation : " << numIter << std::endl;
+			}
+
 			mt->stop("5. Pose Estimation"); // measures the time of pose estimation algorithm
 		}
 
@@ -327,13 +335,13 @@ void ProcPose (Log *mt) {
 		}
 		modelCenter = 1.0 / positions.size() * modelCenter;
 
-//		// calculates the average distance of the reconstructed points with respect to the center of the triplets
-//		double averageDistance = 0;
-//		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
-//			Points<double> f = sv_scene[i];
-//			averageDistance += norm(modelCenter - Matx13f(f[0], f[1], f[2]));
-//		}
-//		averageDistance /= sv_scene.size();
+		// calculates the average distance of the reconstructed points with respect to the center of the triplets
+		double averageDistance = 0;
+		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+			Points<double> f = sv_scene[i];
+			averageDistance += norm(modelCenter - Matx13f(f[0], f[1], f[2]));
+		}
+		averageDistance /= sv_scene.size();
 
 		// assigns a random color to the model to add
 		RGB888 modelColor = RGB888(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
@@ -341,7 +349,7 @@ void ProcPose (Log *mt) {
 		// copies to features vector of the model the points whose average distance is relatively close
 		for (size_t i { 0 }; i < sv_scene.size(); ++i) {
 			Points<double> f = sv_scene[i];
-			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > 10 * averageDistance)
+			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > averageDistance)
 				continue;*/
 			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)

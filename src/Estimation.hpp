@@ -663,10 +663,25 @@ int pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 			sv_e_old = sv_e_cur;
 
 			// check error consistency
+			//ntuple_consistency (p3d_liste, sv_u_liste, 5.0, sv_e_liste, p3d_liste, sv_u_liste);
 			ntuple_consistency (p3d_liste, sv_u_liste, 5.0, sv_e_liste, p3d_liste, sv_u_liste);
 
 			// filter out non convergent radius
+			//ntuple_filter (p3d_liste, sv_u_liste, 5.0, p3d_liste, sv_u_liste);
 			ntuple_filter (p3d_liste, sv_u_liste, 5.0, p3d_liste, sv_u_liste);
+
+			// compute triplet characteristic scale
+			T t_norm {};
+			for (const auto &v_t: sv_t_liste) {
+				t_norm = t_norm + v_t.norm();
+			}
+
+			// normalization of radius
+			for (auto &v_u: sv_u_liste) {
+				for (auto & u: v_u) {
+					u /= t_norm;
+				}
+			}
 
 		}
 
@@ -697,5 +712,65 @@ int pose_estimation (std::vector<Vec_Points<T>> &p3d_liste, const T error_max,
 
 	return counter; // returns the number of iterations
 }
+
+template <typename T>
+void filter_keypoints (std::vector<Vec_Points<T>> &p3d_liste,
+					  Vec_Points<T> &sv_scene,
+					  std::vector<Points<T>> &positions,
+					  std::vector<Vec_Points<T>> &p3d_liste_dest) {
+
+	// the number of spheres
+	size_t nb_sph { p3d_liste.size() }; // this is m
+
+
+	// declare new vectors for the computation
+	std::vector<Vec_Points<T>> p3d_liste_new { };
+
+	// initialize the new vectors with empty elements
+	Vec_Points<T> p3d { };
+	std::vector<T> v { };
+	for (size_t i { 0 }; i < nb_sph; ++i) {
+		p3d_liste_new.push_back(p3d);
+	}
+
+	// the position of the center of the triplets
+	cv::Matx13f modelCenter(0, 0, 0);
+
+	// calculates the mean position of the triplets
+	for (size_t i { 0 }; i < positions.size(); ++i) {
+		Points<double> f = positions[i];
+		modelCenter = modelCenter + cv::Matx13f(f[0], f[1], f[2]);
+	}
+	modelCenter = 1.0 / positions.size() * modelCenter;
+
+	// calculates the average distance of the reconstructed points with respect to the center of the triplets
+	double averageDistance = 0;
+	for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+		Points<double> f = sv_scene[i];
+		averageDistance += cv::norm(modelCenter - cv::Matx13f(f[0], f[1], f[2]));
+	}
+	averageDistance /= sv_scene.size();
+
+
+	for (size_t i { 0 }; i < sv_scene.size(); ++i) {
+
+		Points<double> f = sv_scene[i];
+		//if (cv::norm(cv::Matx13f(f[0], f[1], f[2]) - modelCenter) > 1.2*averageDistance)
+		if (cv::norm(cv::Matx13f(f[0], f[1], f[2]) - modelCenter) > 1.2*averageDistance)
+			continue;
+
+		for (size_t j { 0 }; j < nb_sph; ++j) {
+			p3d_liste_new[j].push_back(p3d_liste[j][i]);
+
+		}
+	}
+
+	// copy the results to destination
+	p3d_liste_dest = p3d_liste_new;
+
+}
+
+
+
 
 #endif /* SRC_ESTIMATION_HPP_ */

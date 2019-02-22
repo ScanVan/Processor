@@ -58,6 +58,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 
 	cout << "Get total " << p1->getMatches().size() << " matches." << endl;
 
+
 	/*cv::Mat outImg{};
 
 	cv::drawMatches(p1->getImage1()->getOmni()->getImage(), p1->getKeyPoints1(), p1->getImage2()->getOmni()->getImage(), p1->getKeyPoints2(), p1->getMatches(), outImg);
@@ -65,6 +66,7 @@ std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWi
 	std::string filename {p1->getImage1()->getOmni()->getImgName() + "_" +p1->getImage2()->getOmni()->getImgName() + ".jpg" };
 	cv::imwrite(filename, outImg);
 */
+
 	//namedWindow("Matches", cv::WINDOW_NORMAL);
 	//imshow ("Matches", outImg);
 	//waitKey(0);
