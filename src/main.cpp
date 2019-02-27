@@ -292,7 +292,7 @@ void ProcPose (Log *mt) {
 		if (initialNumberFeatures!=0) {
 			mt->start("5. Pose Estimation"); // measures the time of pose estimation algorithm
 
-			for (int i = 0; i < 1; ++i) {
+			for (int i = 0; i < 2; ++i) {
 				numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
 
 				filter_keypoints(p3d_liste, sv_scene, positions, p3d_liste);

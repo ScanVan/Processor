@@ -39,8 +39,8 @@ Points<double> convertCartesian2Spherical (double x, double y, int width, int he
 */
 
 	// Correction from Nils
-	double tm1 { ((x - 1) / width) * 2 * M_PI };
-	double tm2 { ((y / height) - 0.5) * M_PI };
+	double tm1 { (x / width) * 2 * M_PI };
+	double tm2 { ((y / (height-1)) - 0.5) * M_PI };
 
 	// coordinate conversion
 	double p1 { cos(tm2) * cos(tm1) };
