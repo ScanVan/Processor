@@ -47,5 +47,8 @@ const std::string outputOdometry { "7_odometry" };
 const std::string outputProgressiveModel { "8_models" };
 // output file name of the merged model
 const std::string outputMergedModelFileName { "sparse.ply" };
+// output folder where the filtered triplets matches (after pose estimation) for two pairs of images is written
+const std::string outputTripletsFiltered { "3_triplets_filtered" };
+
 
 #endif /* SRC_CONFIG_HPP_ */

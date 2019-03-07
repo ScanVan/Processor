@@ -59,6 +59,7 @@ public:
 	Vec_Points<T> operator*(const std::vector<T> &p) const;
 	Vec_Points<T> operator*(const Mat_33<T> &a) const;
 	Vec_Points<T> operator-(const Points<T> &p);
+	bool contains (const Points<T> &p) const;
 
 	friend std::ostream & operator <<(std::ostream & out, const Vec_Points<T> &a) {
 		for (const auto &x:*(a.m_pV)){
@@ -320,6 +321,17 @@ inline Vec_Points<T> Vec_Points<T>::operator-(const Points<T> &p) {
 template <typename T>
 inline Vec_Points<T>::~Vec_Points() {
 	delete m_pV;
+}
+
+template <typename T>
+bool Vec_Points<T>::contains (const Points<T> &p) const {
+// Checks if the point p is contained in the vector
+
+	std::vector<Points<T>> &list_points = *m_pV;
+
+	auto it = std::find(list_points.begin(), list_points.end(), p);
+	return (it==list_points.end())?false:true;
+
 }
 
 #endif /* SRC_VEC_POINTS_HPP_ */

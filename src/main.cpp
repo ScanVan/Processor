@@ -239,6 +239,8 @@ void ProcPose (Log *mt) {
 		// vector containing the spherical coordinates
 		std::vector<Vec_Points<double>> p3d_liste { };
 
+
+
 		// width and height of the images
 		auto width = receivedTripletsImages->getImage()[0]->getOmni()->getImage().cols;
 		auto height = receivedTripletsImages->getImage()[0]->getOmni()->getImage().rows;
@@ -270,6 +272,9 @@ void ProcPose (Log *mt) {
 		}
 		mt->stop("4. Conversion to Spherical - Triplets"); // measures the conversion time to spherical
 
+		// copy of the original vector containing the spherical coordinates
+		std::vector<Vec_Points<double>> p3d_liste_orig {p3d_liste};
+
 		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
 		write_4_spherical(receivedTripletsImages, p3d_liste);
@@ -292,10 +297,10 @@ void ProcPose (Log *mt) {
 		if (initialNumberFeatures!=0) {
 			mt->start("5. Pose Estimation"); // measures the time of pose estimation algorithm
 
-			for (int i = 0; i < 2; ++i) {
+			for (int i = 0; i < 1; ++i) {
 				numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
 
-				filter_keypoints(p3d_liste, sv_scene, positions, p3d_liste);
+				//filter_keypoints(p3d_liste, sv_scene, positions, p3d_liste);
 
 				std::cout << "Number of iterations pose estimation : " << numIter << std::endl;
 			}
@@ -314,6 +319,11 @@ void ProcPose (Log *mt) {
 		//==========================================================================================
 		// output in a file of the sparse point cloud of the triplet
 		write_6_sparse_3 (receivedTripletsImages, sv_scene);
+		//==========================================================================================
+
+		//==========================================================================================
+		// write the matched features of the triplets that are filtered
+		write_3_triplets_filtered (receivedTripletsImages, p3d_liste_orig, p3d_liste);
 		//==========================================================================================
 
 

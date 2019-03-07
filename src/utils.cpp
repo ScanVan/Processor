@@ -158,6 +158,52 @@ void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
 	outputFileTriplets.close();
 }
 
+void write_3_triplets_filtered(const std::shared_ptr<TripletsWithMatches> &p1, const std::vector<Vec_Points<double>> &p3d_liste_orig, const std::vector<Vec_Points<double>> &p3d_liste) {
+// writes the filtered triplets in the output file
+
+	std::string pathOutputTriplets = outputFolder + "/" + outputTripletsFiltered + "/" + p1->getTripletImageName();
+
+	// open the file to write the matches
+	std::ofstream outputFileTriplets { pathOutputTriplets, std::ios::trunc };
+
+	// Keypoints of the first image of the first pair
+	std::vector<cv::KeyPoint> kpt1 = p1->getImage()[0]->getKeyPoints();
+	// Keypoints of the second image of the first pair
+	std::vector<cv::KeyPoint> kpt2 = p1->getImage()[1]->getKeyPoints();
+	// Keypoints of the second image of the second pair
+	std::vector<cv::KeyPoint> kpt3 = p1->getImage()[2]->getKeyPoints();
+
+	// Select the list of filtered points of the first sphere
+	const Vec_Points<double> &final_list = p3d_liste[0];
+	const Vec_Points<double> &original_list = p3d_liste_orig[0];
+
+	if (p1->getMatchVector().size() != original_list.size()) {
+		throw (std::runtime_error("Error in the length of the feature match vector and the vector of spherical coordinates."));
+	}
+
+	int index { 0 };
+	// loop over the vector of matches
+	// v is vector with the indices of the keypoints
+	for (const auto &v : p1->getMatchVector()) {
+
+		// a point in the original list from the sphere 0
+		const Points<double> &point_orig = p3d_liste_orig[0][index];
+
+		if (final_list.contains(point_orig)) {
+
+			// kpt1[v[0]] is the keypoint of the first image of the first pair
+			// kpt2[v[1]] is the keypoint of the second image of the first pair
+			// kpt3[v[2]] is the keypoint of the second image of the second pair
+			outputFileTriplets << std::setprecision(15) << kpt1[v[0]].pt.x << " " << kpt1[v[0]].pt.y << " " << kpt2[v[1]].pt.x << " "
+					<< kpt2[v[1]].pt.y << " " << kpt3[v[2]].pt.x << " " << kpt3[v[2]].pt.y << std::endl;
+		}
+
+		index++;
+	}
+
+	outputFileTriplets.close();
+}
+
 void write_4_spherical(const std::shared_ptr<TripletsWithMatches> &triplets, const std::vector<Vec_Points<double>> &p3d_liste) {
 // writes the spherical coordinates of each sphere
 

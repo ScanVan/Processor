@@ -36,6 +36,7 @@ public:
 	Points<T> operator/(const T c) const;
 	Points<T> & operator=(const Points<T> &a);
 	Points<T> & operator=(Points<T> &&a);
+	bool operator==(const Points<T> &p) const;
 	const T & operator[](const size_t i) const;
 	T & operator[](const size_t i);
 	friend std::ostream & operator <<(std::ostream & out, const Points<T> &a) {
@@ -178,6 +179,12 @@ inline T & Points<T>::operator[](const size_t i){
 	} else {
 		throw std::out_of_range("Invalid access to Point coordinates.");
 	}
+}
+
+template <typename T>
+inline bool Points<T>::operator==(const Points<T> &p) const {
+
+	return ((m_pA->at(0) == p[0])&&(m_pA->at(1)==p[1])&&(m_pA->at(2)==p[2]));
 }
 
 #endif /* SRC_POINTS_HPP_ */
