@@ -13,9 +13,11 @@
 
 // Folder names for the data
 // input main folder
-const std::string inputFolder { "data_in" };
+//const std::string inputFolder { "data_in"};
+const std::string inputFolder { "/home/mkaihara/dev/remoteStorage/record/camera_40008603-40009302/20190319-103441_SionCar1"};
 // input folder where the input images are located
-const std::string inputDataSet { "0_dataset_20181218-160912_SionOutdoor" };
+const std::string inputDataSet { "./" };
+//const std::string inputDataSet { "0_dataset_20181218-160912_SionOutdoor" };
 //const std::string inputDataSet { "0_dataset_20180904-164403_HESOutdoorCircular" };
 //const std::string inputDataSet { "0_dataset_20180904-164727_HESOutdoorLinear" };
 //const std::string inputDataSet { "0_dataset_20181010-144454_HESIndoorOffice" };
@@ -23,12 +25,14 @@ const std::string inputDataSet { "0_dataset_20181218-160912_SionOutdoor" };
 
 
 // input folder where the mask is located
-const std::string inputMask { "1_mask" };
+//const std::string inputMask { "1_mask" };
+const std::string inputMask { "/home/mkaihara/dev/remoteStorage/model/camera_40008603-40009302/20190319-103441_SionCar1_20190327/input/1_mask" };
 // name of the file of the mask
 const std::string inputMaskFileName { "mask0.png" };
 
 // output main folder
-const std::string outputFolder { "data_out" };
+//const std::string outputFolder { "data_out" };
+const std::string outputFolder { "/home/mkaihara/dev/remoteStorage/model/camera_40008603-40009302/20190319-103441_SionCar1_20190327/output" };
 // output folder where the features for each image is written
 const std::string outputFeatures { "1_features" };
 // output folder where the matches for each pair of image is written

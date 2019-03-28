@@ -50,8 +50,12 @@ void generatePairImages (Log *mt) {
 
 	// read the contents of the directory where the images are located
 	fs::path pt = fs::u8path(inputFolder + "/" + inputDataSet);
-	for (auto& p : fs::directory_iterator(pt))
-		file_list.push_back(p.path().u8string());
+	for (auto& p : fs::directory_iterator(pt)) {
+		std::string str = p.path().u8string();
+		if (str.substr(str.length()-3)=="bmp") {
+			file_list.push_back(p.path().u8string());
+		}
+	}
 
 	// sort the filenames alphabetically
 	std::sort(file_list.begin(), file_list.end());
@@ -106,6 +110,10 @@ void generatePairImages (Log *mt) {
 		// simulates the delay of image acquisition
 		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
+		while (imgProcQueue.size()>10) {
+			std::this_thread::sleep_for(1s);
+		}
+
 		// push to the queue
 		imgProcQueue.push(p1);
 
@@ -131,7 +139,8 @@ void procFeatures (Log *mt) {
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
-	auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
+	//auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
+	auto mask = make_shared<cv::Mat>(imread(inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
 
 	// If the mask was not loaded, throw an error
 	if (! mask->data) {
@@ -196,6 +205,10 @@ void procFeatures (Log *mt) {
 			mt->stop("3. Common Points Computation - Triplets"); // measures the common points computation
 
 			// push the triplet to the thread-safe queue and send it for pose estimation
+			while (tripletsProcQueue.size() > 5) {
+				std::this_thread::sleep_for(1s);
+			}
+
 			tripletsProcQueue.push(p1);
 
 			//==========================================================================================

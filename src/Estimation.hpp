@@ -25,6 +25,7 @@
 #include "Vec_Points.hpp"
 #include "Print_Data.hpp"
 #include <cmath>
+#include <numeric>
 
 template <typename T>
 void ntuple_consistency (const std::vector<Vec_Points<T>> &p3d_liste,
