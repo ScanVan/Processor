@@ -42,14 +42,14 @@ ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 
 //=========================================================================================================
 
-void generatePairImages (Log *mt) {
+void generatePairImages (Log *mt, Config *FC) {
 // It reads the images from file and pushes to the queue for the feature extraction
 
 	// list of file names of the input images
 	std::vector<std::string> file_list{};
 
 	// read the contents of the directory where the images are located
-	fs::path pt = fs::u8path(inputFolder + "/" + inputDataSet);
+	fs::path pt = fs::u8path(FC->inputFolder);
 	for (auto& p : fs::directory_iterator(pt)) {
 		std::string str = p.path().u8string();
 		if (str.substr(str.length()-3)=="bmp") {
@@ -133,14 +133,14 @@ void generatePairImages (Log *mt) {
 
 //=========================================================================================================
 
-void procFeatures (Log *mt) {
+void procFeatures (Log *mt, Config *FC) {
 
 	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// reads the mask to apply on the images
 	//auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
-	auto mask = make_shared<cv::Mat>(imread(inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
+	auto mask = make_shared<cv::Mat>(imread(FC->inputMask, IMREAD_GRAYSCALE));
 
 	// If the mask was not loaded, throw an error
 	if (! mask->data) {
@@ -168,7 +168,7 @@ void procFeatures (Log *mt) {
 
 		//==========================================================================================
 		// write into file the features
-		write_1_features(featuredImages);
+		FC->write_1_features(featuredImages);
 		//==========================================================================================
 
 		// v is a sort of queue where the extracted features are stored
@@ -185,7 +185,7 @@ void procFeatures (Log *mt) {
 
 			//==========================================================================================
 			// write the matched features for each pair of images
-			write_2_matches(lp.front());
+			FC->write_2_matches(lp.front());
 			//==========================================================================================
 
 			v.pop_back();
@@ -213,7 +213,7 @@ void procFeatures (Log *mt) {
 
 			//==========================================================================================
 			// write the matched features for two consecutive pair of images, i.e. triplets
-			write_3_triplets(p1);
+			FC->write_3_triplets(p1);
 			//==========================================================================================
 
 			lp.pop_back();
@@ -227,7 +227,7 @@ void procFeatures (Log *mt) {
 
 //========================================================================================================
 
-void ProcPose (Log *mt) {
+void ProcPose (Log *mt, Config *FC) {
 
 	//std::vector<Model> vecm { };
 
@@ -290,7 +290,7 @@ void ProcPose (Log *mt) {
 
 		//==========================================================================================
 		// output in a file the spherical coordinates of the triplet
-		write_4_spherical(receivedTripletsImages, p3d_liste);
+		FC->write_4_spherical(receivedTripletsImages, p3d_liste);
 		//==========================================================================================
 
 		Vec_Points<double> sv_scene { };
@@ -326,17 +326,17 @@ void ProcPose (Log *mt) {
 
 		//==========================================================================================
 		// output in a file the rotation matrix and translation vector and statistics of the pose estimation algorithm
-		write_5_pose_3(receivedTripletsImages, sv_r_liste, sv_t_liste, numIter, initialNumberFeatures, finalNumberFeatures);
+		FC->write_5_pose_3(receivedTripletsImages, sv_r_liste, sv_t_liste, numIter, initialNumberFeatures, finalNumberFeatures);
 		//==========================================================================================
 
 		//==========================================================================================
 		// output in a file of the sparse point cloud of the triplet
-		write_6_sparse_3 (receivedTripletsImages, sv_scene);
+		FC->write_6_sparse_3 (receivedTripletsImages, sv_scene);
 		//==========================================================================================
 
 		//==========================================================================================
 		// write the matched features of the triplets that are filtered
-		write_3_triplets_filtered (receivedTripletsImages, p3d_liste_orig, p3d_liste);
+		FC->write_3_triplets_filtered (receivedTripletsImages, p3d_liste_orig, p3d_liste);
 		//==========================================================================================
 
 
@@ -406,12 +406,12 @@ void ProcPose (Log *mt) {
 
 		//==========================================================================================
 		// output in a file of the absolute rotation and translation matrices
-		write_7_odometry (m);
+		FC->write_7_odometry (m);
 		//==========================================================================================
 
 		//==========================================================================================
 		// output in a file of the progressively merged models
-		write_8_progressiveModel(m);
+		FC->write_8_progressiveModel(m);
 		//==========================================================================================
 
 		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
@@ -421,7 +421,7 @@ void ProcPose (Log *mt) {
 	}
 	//==========================================================================================
 	// output in a file of the merged model
-	write_9_finalModel(m);
+	FC->write_9_finalModel(m);
 	//==========================================================================================
 
 
@@ -430,31 +430,42 @@ void ProcPose (Log *mt) {
 }
 
 
-int main(int argc, char* argv[]) {
-
-//	if (argc < 2) {
-//		std::cerr << "Usage: " << argv[0] << " config_file.txt" << std::endl;
-//		return 1;
-//	}
-//
-//	std::string cfg = argv[1];
+void RunAllPipeline (Config *FC) {
 
 	Log mt{};
 
 	// Process configuration file
 	//ProcessConfigFile(cfg);
 	// check if folders for writing the results exist
-	checkFolders();
+	FC->CheckFolders();
 
-	std::thread GenPairs (generatePairImages, &mt);
-	std::thread ProcessFeatureExtraction (procFeatures, &mt);
-	std::thread ProcessPoseEstimation (ProcPose, &mt);
+	std::thread GenPairs (generatePairImages, &mt, FC);
+	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
+	std::thread ProcessPoseEstimation (ProcPose, &mt, FC);
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation.join();
 
 	mt.listRunningTimes();
+
+}
+
+
+int main(int argc, char* argv[]) {
+
+	if (argc < 2) {
+		std::cerr << "Usage: " << argv[0] << " config_file.txt" << std::endl;
+		return 1;
+	}
+
+	std::string cfg = argv[1];
+
+	Config FC (cfg);
+
+	if (FC.execType == Config::RUN_ALL) {
+		RunAllPipeline(&FC);
+	}
 
 	return 0;
 

@@ -1,0 +1,15 @@
+# Lines starting with # or empty lines will be omitted.
+
+# Path to the main input folder
+PATH_TO_INPUT = /home/mkaihara/Documents/images/SionCar1_subset
+
+# Path to input mask file 
+PATH_TO_MASK = /home/mkaihara/Documents/images/SionCar1_subset_output/input/1_mask/mask0_b.png
+
+# Path to the output folder where the intermediate data will be stored. A tree of sub-folders will be created.
+PATH_TO_OUTPUT = /home/mkaihara/Documents/images/SionCar1_subset_output/output
+
+# Type of execution:
+# RUN_ALL : Runs the entire pipeline
+# FILTER_STILL : Takes the pair of matched features and filters out those corresponding a still motion
+EXEC_TYPE = RUN_ALL
