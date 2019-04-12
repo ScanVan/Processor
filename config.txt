@@ -13,3 +13,6 @@ PATH_TO_OUTPUT = /home/mkaihara/Documents/images/SionCar1_subset_output/output
 # RUN_ALL : Runs the entire pipeline
 # FILTER_STILL : Takes the pair of matched features and filters out those corresponding a still motion
 EXEC_TYPE = RUN_ALL
+
+# Threshold to detect that the car is not moving
+STILL_THRS = 1.2

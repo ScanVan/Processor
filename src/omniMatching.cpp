@@ -2,6 +2,14 @@
 
 #include "gms_matcher.h"
 
+
+double movementCheck (std::shared_ptr<PairWithMatches> p1) {
+
+	auto matches = p1->getMatches();
+
+
+}
+
 std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWithFeatures> im1, std::shared_ptr<EquirectangularWithFeatures> im2) {
 // Calculates the matching between the features of two images
 

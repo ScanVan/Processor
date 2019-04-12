@@ -51,6 +51,9 @@ public:
 	// Command of execution
 	TypeOfExecution execType = RUN_ALL;
 
+	// Threshold for determining the car is not moving
+	double stillThrs = {};
+
 	Config(std::string s) :
 			ConfigFilePath(s) {
 		ProcessConfigFile();

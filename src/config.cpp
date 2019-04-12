@@ -110,6 +110,19 @@ void Config::ProcessConfigFile() {
 				throw(std::runtime_error("Error: EXEC_TYPE parameter is empty."));
 			}
 
+		}  else if (command == "STILL_THRS") {
+			// The threshold for detecting that the car is not moving
+			if (argument != "") {
+				std::stringstream ss (argument);
+				try {
+					ss >> std::setprecision(15) >> stillThrs;
+				} catch (...) {
+					throw(std::runtime_error("Error: STILL_THRS has an invalid parameter."));
+				}
+			} else {
+				throw(std::runtime_error("Error: STILL_THRS parameter is empty."));
+			}
+
 		}
 	}
 }
