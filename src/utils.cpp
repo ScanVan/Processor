@@ -11,6 +11,103 @@ void print (std::string st) {
 	std::cout << st;
 }
 
+/*
+std::string trim(const std::string& str, const std::string& whitespace = " \t") {
+// trim white spaces and tabs from the beginning and end
+
+	const auto strBegin = str.find_first_not_of(whitespace);
+	if (strBegin == std::string::npos)
+		return ""; // no content
+
+	const auto strEnd = str.find_last_not_of(whitespace);
+	const auto strRange = strEnd - strBegin + 1;
+
+	return str.substr(strBegin, strRange);
+}
+
+std::string ToUpper(const std::string &str) {
+// Convert to upper case the string
+
+	std::locale loc { };
+	std::stringstream ss { };
+	for (std::string::size_type i = 0; i < str.length(); ++i)
+		ss << std::toupper(str[i], loc);
+	return (ss.str());
+}
+
+void ProcessConfigFile(std::string &cfg) {
+
+	// open configuration file
+	std::ifstream f(cfg);
+
+	if (!f.good()) {
+		throw std::runtime_error("Error opening the configuration file \"" + cfg + "\".");
+	}
+
+	// process configuration file
+	while (f.good()) {
+
+		std::string line { };
+		std::getline(f, line);
+
+		// remove white spaces from the line
+		std::string trimmedLine = trim(line);
+		if (trimmedLine == "")
+			continue;
+
+		// Ignore lines starting with hash symbol
+		const auto strHash = trimmedLine.find_first_of("#");
+		if (strHash == 0)
+			continue;
+
+		// Extract the command and the argument separated by the symbol "="
+		const auto strEqual = trimmedLine.find_first_of("=");
+		std::string command = ToUpper(trim(trimmedLine.substr(0, strEqual)));
+		std::string argument = trim(trimmedLine.substr(strEqual + 1));
+
+		// Check for commands
+		if (command == "INPUT_MAIN_FOLDER") {
+			// Path to main folder where the equirectangular images are stored
+			if (argument != "") {
+				inputFolder = argument;
+			} else {
+				throw(std::runtime_error("Error: INPUT_MAIN_FOLDER parameter is empty."));
+			}
+		} else if (command == "INPUT_DATA_SET") {
+			// Path to the subdirectory where the equirectangular images are stored with respect to the main folder
+			if (argument != "") {
+				fs::path p = argument;
+				inputDataSet = argument;
+			} else {
+				throw(std::runtime_error("Error: INPUT_DATA_SET parameter is empty."));
+			}
+		} else if (command == "INPUT_MASK_FOLDER") {
+			// Path the mask
+			if (argument != "") {
+				inputMask = argument;
+			} else {
+				throw(std::runtime_error("Error: INPUT_MASK_FOLDER parameter is empty."));
+			}
+		} else if (command == "INPUT_MASK_FILE_NAME") {
+			// File name of the maks
+			if (argument != "") {
+				inputMaskFileName = argument;
+			} else {
+				throw(std::runtime_error("Error: INPUT_MASK_FILE_NAME parameter is empty."));
+			}
+		} else if (command == "OUTPUT_FOLDER") {
+			// Path to the output folder. All the subdirectories will be created
+			if (argument != "") {
+				outputFolder = argument;
+			} else {
+				throw(std::runtime_error("Error: OUTPUT_FOLDER parameter is empty."));
+			}
+		}
+	}
+}
+*/
+
+
 void checkFolders() {
 
 	// checks if the folder to write the outputs exist

@@ -17,6 +17,9 @@ class Model;
 
 #define DEBUG_PTR(ptr) auto ptr##_ = ptr.get();
 
+//std::string trim(const std::string& str, const std::string& whitespace);
+//std::string ToUpper(const std::string &str);
+//void ProcessConfigFile(std::string &cfg);
 void checkFolders();
 void write_1_features(const std::shared_ptr<EquirectangularWithFeatures> &featuredImages);
 void write_2_matches(const std::shared_ptr<PairWithMatches> &matches) ;

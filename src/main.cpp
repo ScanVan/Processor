@@ -430,10 +430,19 @@ void ProcPose (Log *mt) {
 }
 
 
-int main() {
+int main(int argc, char* argv[]) {
+
+//	if (argc < 2) {
+//		std::cerr << "Usage: " << argv[0] << " config_file.txt" << std::endl;
+//		return 1;
+//	}
+//
+//	std::string cfg = argv[1];
 
 	Log mt{};
 
+	// Process configuration file
+	//ProcessConfigFile(cfg);
 	// check if folders for writing the results exist
 	checkFolders();
 
