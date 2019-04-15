@@ -110,6 +110,7 @@ public:
 	void CheckFolders();
 	void write_1_features(const std::shared_ptr<EquirectangularWithFeatures> &featuredImages);
 	void write_2_matches(const std::shared_ptr<PairWithMatches> &matches);
+	void write_2_matches_moving (const std::shared_ptr<PairWithMatches> &matches);
 	void write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1);
 	void write_3_triplets_filtered(const std::shared_ptr<TripletsWithMatches> &p1, const std::vector<Vec_Points<double>> &p3d_liste_orig, const std::vector<Vec_Points<double>> &p3d_liste);
 	void write_4_spherical(const std::shared_ptr<TripletsWithMatches> &triplets, const std::vector<Vec_Points<double>> &p3d_liste);

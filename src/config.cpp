@@ -266,6 +266,33 @@ void Config::write_2_matches(const std::shared_ptr<PairWithMatches> &matches) {
 
 }
 
+void Config::write_2_matches_moving (const std::shared_ptr<PairWithMatches> &matches) {
+// writes the matches in the output file
+
+	fs::path p1 = PathOutputMatchesMoving;
+	fs::path p2 = p1 / matches->getPairImageName();
+
+	std::string pathOutputMatches = p2.string();
+	// open the file to write the matches
+	std::ofstream outputFileMatches { pathOutputMatches, std::ios::trunc };
+
+	// Keypoints of the first image
+	std::vector<cv::KeyPoint> kp1 = matches->getKeyPoints1();
+	// Keypoints of the second image
+	std::vector<cv::KeyPoint> kp2 = matches->getKeyPoints2();
+
+	// loop over the vector of matches
+	for (const auto &m : matches->getMatches()) {
+
+		// m.queryIdx is the index of the Keypoints on the first image
+		// m.trainIdx is the index of the Keypoints on the second image
+		outputFileMatches << std::setprecision(15) << kp1[m.queryIdx].pt.x << " " << kp1[m.queryIdx].pt.y << " " << kp2[m.trainIdx].pt.x << " "
+				<< kp2[m.trainIdx].pt.y << std::endl;
+	}
+	outputFileMatches.close();
+
+}
+
 void Config::write_3_triplets(const std::shared_ptr<TripletsWithMatches> &p1) {
 // writes the triplets in the output file
 

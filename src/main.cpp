@@ -194,6 +194,14 @@ void procFeatures (Log *mt, Config *FC) {
 			if (!movementCheck(lp.front(), FC->stillThrs)) {
 			// If it is not in movement, remove from the deque
 				lp.pop_front();
+			} else {
+				// If it is in movement, write the features and continue the computation
+
+				//==========================================================================================
+				// write the matched features for each pair of images
+				FC->write_2_matches_moving (lp.front());
+				//==========================================================================================
+
 			}
 
 			v.pop_back();
@@ -443,8 +451,6 @@ void RunAllPipeline (Config *FC) {
 
 	Log mt{};
 
-	// Process configuration file
-	//ProcessConfigFile(cfg);
 	// check if folders for writing the results exist
 	FC->CheckFolders();
 
