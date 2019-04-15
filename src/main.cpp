@@ -183,10 +183,19 @@ void procFeatures (Log *mt, Config *FC) {
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			mt->stop("2. Feature Matching Pairs"); // measures the feature matching of pairs
 
-			//==========================================================================================
-			// write the matched features for each pair of images
-			FC->write_2_matches(lp.front());
-			//==========================================================================================
+			// If the execution type is not FILTER_STILL write the features of the pairs
+			// Otherwise skil this operation as it is already computed
+			// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			// TEMPORARY SOLUTION FOR THE TEST
+			// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+			if (FC->execType != Config::FILTER_STILL) {
+				//==========================================================================================
+				// write the matched features for each pair of images
+				FC->write_2_matches(lp.front());
+				//==========================================================================================
+
+			}
 
 			//==========================================================================================
 			// Call here to check if the car is moving
@@ -208,6 +217,10 @@ void procFeatures (Log *mt, Config *FC) {
 
 		}
 
+		// If the execution type is FILTER_STILL skip the rest of the computation
+		if (FC->execType == Config::FILTER_STILL) {
+			continue;
+		}
 		// lp is a sort of queue where the matches are stored
 		// whenever there are two sets of matches, the triplets are computed
 		if (lp.size() == 2) {
@@ -466,6 +479,21 @@ void RunAllPipeline (Config *FC) {
 
 }
 
+void RunUntilFilterStill (Config *FC) {
+
+	Log mt{};
+
+	// check if folders for writing the results exist
+	FC->CheckFolders();
+
+	std::thread GenPairs (generatePairImages, &mt, FC);
+	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
+
+	GenPairs.join();
+	ProcessFeatureExtraction.join();
+
+	mt.listRunningTimes();
+}
 
 int main(int argc, char* argv[]) {
 
@@ -480,6 +508,8 @@ int main(int argc, char* argv[]) {
 
 	if (FC.execType == Config::RUN_ALL) {
 		RunAllPipeline(&FC);
+	} else if (FC.execType == Config::FILTER_STILL) {
+		RunUntilFilterStill(&FC);
 	}
 
 	return 0;
