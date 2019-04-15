@@ -23,6 +23,7 @@
 
 std::shared_ptr<EquirectangularWithFeatures> extractFeatures(std::shared_ptr<Equirectangular> omni, std::shared_ptr<cv::Mat> mask);
 std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWithFeatures> im1, std::shared_ptr<EquirectangularWithFeatures> im2);
+bool movementCheck (std::shared_ptr<PairWithMatches> matches, double threshold);
 std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<PairWithMatches> p1, std::shared_ptr<PairWithMatches> p2);
 std::shared_ptr<Model> poseEstimation (std::shared_ptr<TripletsWithMatches> t1);
 void fusionModel (Model *m1, Model *m2);

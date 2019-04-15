@@ -1,12 +1,20 @@
 #include "pipelineAlgo.hpp"
-
 #include "gms_matcher.h"
 
 
-double movementCheck (std::shared_ptr<PairWithMatches> p1) {
+bool movementCheck (std::shared_ptr<PairWithMatches> matches, double threshold) {
+// Checks if the pair of images are in movement
+// Inputs:
+// matches: shared pointer to PairWithMatches
+// threshold: the threshold to check if the pair is in movement
+// Output:
+// true if movement is detected, false if it is in still mode
 
-	auto matches = p1->getMatches();
+	if (matches->computeStillDistance() > threshold) {
+		return true;
+	}
 
+	return false;
 
 }
 

@@ -188,9 +188,16 @@ void procFeatures (Log *mt, Config *FC) {
 			FC->write_2_matches(lp.front());
 			//==========================================================================================
 
-
+			//==========================================================================================
+			// Call here to check if the car is moving
+			//==========================================================================================
+			if (!movementCheck(lp.front(), FC->stillThrs)) {
+			// If it is not in movement, remove from the deque
+				lp.pop_front();
+			}
 
 			v.pop_back();
+
 		}
 
 		// lp is a sort of queue where the matches are stored

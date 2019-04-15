@@ -15,6 +15,7 @@
 #include <opencv4/opencv2/imgcodecs.hpp>
 #include <opencv4/opencv2/opencv.hpp>
 #include <math.h>
+#include <numeric>
 
 //#include "utils.hpp"
 
@@ -169,6 +170,8 @@ public:
 	std::string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + ")";
 	}
+	double computeStillDistance ();
+
 };
 
 class TripletsWithMatches {
