@@ -16,7 +16,7 @@
 #include <opencv4/opencv2/opencv.hpp>
 #include <math.h>
 
-#include "ctpl.hpp"
+//#include "ctpl.hpp"
 #include "Queue.hpp"
 #include "DataModel.hpp"
 #include "config.hpp"
