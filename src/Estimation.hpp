@@ -171,7 +171,7 @@ void ntuple_filter (const std::vector<Vec_Points<T>> &p3d_liste,
 		}
 
 		// if it passes all the filtering conditions copy the elements to the new vectors
-		if (flag) {
+		if (flag && (sv_u_liste[0][i] > 0)) {
 			for (size_t j { 0 }; j < nb_sph; ++j) {
 				p3d_liste_new[j].push_back(p3d_liste[j][i]);
 				sv_u_liste_new[j].push_back(sv_u_liste[j][i]);
