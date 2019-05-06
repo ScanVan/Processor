@@ -219,6 +219,7 @@ void procFeatures (Log *mt, Config *FC) {
 
 		// If the execution type is FILTER_STILL skip the rest of the computation
 		if (FC->execType == Config::FILTER_STILL) {
+			lp.clear();
 			continue;
 		}
 		// lp is a sort of queue where the matches are stored

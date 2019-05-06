@@ -1,18 +1,18 @@
 # Lines starting with # or empty lines will be omitted.
 
 # Path to the main input folder
-PATH_TO_INPUT = /home/mkaihara/Documents/images/SionCar1
+PATH_TO_INPUT = /home/mkaihara/dev/remoteStorage/record/camera_40008603-40009302/20190319-103441_SionCar1
 
 # Path to input mask file 
-PATH_TO_MASK = /home/mkaihara/Documents/images/SionCar1_results/input/1_mask/mask0_b.png
+PATH_TO_MASK = /home/mkaihara/dev/remoteStorage/model/camera_40008603-40009302/20190319-103441_SionCar1_20190404_New_Mask/input/1_mask/mask0_b.png
 
 # Path to the output folder where the intermediate data will be stored. A tree of sub-folders will be created.
-PATH_TO_OUTPUT = /home/mkaihara/Documents/images/SionCar1_subset_output/output
+PATH_TO_OUTPUT = /home/mkaihara/dev/remoteStorage/model/camera_40008603-40009302/20190319-103441_SionCar1_20190404_New_Mask/output
 
 # Type of execution:
 # RUN_ALL : Runs the entire pipeline
 # FILTER_STILL : Takes the pair of matched features and filters out those corresponding a still motion
-EXEC_TYPE = RUN_ALL
+EXEC_TYPE = FILTER_STILL
 
 # Threshold to detect that the car is not moving
-STILL_THRS = 1.2
+STILL_THRS = 0.0005
