@@ -183,22 +183,13 @@ void procFeatures (Log *mt, Config *FC) {
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			mt->stop("2. Feature Matching Pairs"); // measures the feature matching of pairs
 
-			// If the execution type is not FILTER_STILL write the features of the pairs
-			// Otherwise skil this operation as it is already computed
-			// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			// TEMPORARY SOLUTION FOR THE TEST
-			// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-			if (FC->execType != Config::FILTER_STILL) {
-				//==========================================================================================
-				// write the matched features for each pair of images
-				FC->write_2_matches(lp.front());
-				//==========================================================================================
-
-			}
+			//==========================================================================================
+			// write the matched features for each pair of images
+			FC->write_2_matches(lp.front());
+			//==========================================================================================
 
 			//==========================================================================================
-			// Call here to check if the car is moving
+			// Check here if car is moving
 			//==========================================================================================
 			if (!movementCheck(lp.front(), FC->stillThrs)) {
 			// If it is not in movement, remove from the deque
@@ -282,7 +273,6 @@ void ProcPose (Log *mt, Config *FC) {
 
 		// vector containing the spherical coordinates
 		std::vector<Vec_Points<double>> p3d_liste { };
-
 
 
 		// width and height of the images
@@ -465,6 +455,8 @@ void RunAllPipeline (Config *FC) {
 
 	Log mt{};
 
+	mt.start("6. Total running time"); // measures the total running time
+
 	// check if folders for writing the results exist
 	FC->CheckFolders();
 
@@ -476,6 +468,8 @@ void RunAllPipeline (Config *FC) {
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation.join();
 
+	mt.stop("6. Total running time"); // measures the total running time
+
 	mt.listRunningTimes();
 
 }
@@ -483,6 +477,8 @@ void RunAllPipeline (Config *FC) {
 void RunUntilFilterStill (Config *FC) {
 
 	Log mt{};
+
+	mt.start("6. Total running time"); // measures the total running time
 
 	// check if folders for writing the results exist
 	FC->CheckFolders();
@@ -492,6 +488,8 @@ void RunUntilFilterStill (Config *FC) {
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
+
+	mt.stop("6. Total running time"); // measures the total running time
 
 	mt.listRunningTimes();
 }
