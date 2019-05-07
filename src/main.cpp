@@ -368,6 +368,7 @@ void ProcPose (Log *mt, Config *FC) {
 		m2.imgNames.push_back(receivedTripletsImages->getImageName1());
 		m2.imgNames.push_back(receivedTripletsImages->getImageName2());
 		m2.imgNames.push_back(receivedTripletsImages->getImageName3());
+		m2.modelSeqNum = receivedTripletsImages->getTripletSeqNum();
 
 		// the position of the center of the triplets
 		cv::Matx13f modelCenter(0, 0, 0);

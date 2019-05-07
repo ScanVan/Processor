@@ -176,6 +176,7 @@ public:
 
 class TripletsWithMatches {
 private:
+	static long int tripletSeqNum;
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
 	std::vector<std::vector<int>> matches {};
 	std::vector<int> freqMatches1 {};
@@ -189,6 +190,7 @@ public:
 		this->imgs[0] = img0;
 		this->imgs[1] = img1;
 		this->imgs[2] = img2;
+		tripletSeqNum++;
 	}
 	std::vector<std::vector<int>> & getMatchVector() {
 		return matches;
@@ -238,7 +240,12 @@ public:
 	std::string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
 	}
+	long int getTripletSeqNum() {
+		return tripletSeqNum;
+	}
 };
+
+
 
 typedef cv::Vec<uint8_t, 3> RGB888;
 
@@ -278,6 +285,7 @@ public:
 
 class Model {
 public:
+	long int modelSeqNum {0};
 	std::vector<ModelViewPoint> viewPoints;
 	std::vector<ModelFeature> features;
 	std::vector<std::string> imgNames;

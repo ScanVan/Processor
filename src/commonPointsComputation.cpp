@@ -25,9 +25,9 @@ std::shared_ptr<TripletsWithMatches> commonPointsComputation (std::shared_ptr<Pa
 	print (ss.str());
 
 	// Check if the pairs are consecutive
-	if (p1->getImageNumber2() != p2->getImageNumber1()) {
-		throw std::runtime_error ("Error in indexes in CommonPointComputation");
-	}
+//	if (p1->getImageNumber2() != p2->getImageNumber1()) {
+//		throw std::runtime_error ("Error in indexes in CommonPointComputation");
+//	}
 
 	std::shared_ptr<TripletsWithMatches> t1(new TripletsWithMatches { p1->getImage1(), p1->getImage2(), p2->getImage2() });
 
