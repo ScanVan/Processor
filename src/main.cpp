@@ -81,13 +81,13 @@ void generatePairImages (Log *mt, Config *FC) {
 	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
-	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-103913-094892.bmp");
-	file_list.erase(file_list.begin(), it1);
-
-	for (auto &n : file_list) {
-		std::cout << n << std::endl;
-	}
-	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+//	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-103913-094892.bmp");
+//	file_list.erase(file_list.begin(), it1);
+//
+//	for (auto &n : file_list) {
+//		std::cout << n << std::endl;
+//	}
+//	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
 /*	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");

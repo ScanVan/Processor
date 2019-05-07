@@ -43,3 +43,10 @@
 
 # Configuration files
 config2.txt
+
+# Cmake files
+CMakeCache.txt
+CMakeFiles/
+Makefile
+bin/
+cmake_install.cmake
