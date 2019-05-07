@@ -40,6 +40,9 @@ ScanVan::thread_safe_queue<Equirectangular> imgProcQueue {};
 // Thread-safe queue for communication between the feature extraction and pose estimation
 ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 
+// Thread-safe queue for communication sending the models for fusion
+ScanVan::thread_safe_queue<Model> modelQueue {};
+
 //=========================================================================================================
 
 void generatePairImages (Log *mt, Config *FC) {
@@ -110,7 +113,7 @@ void generatePairImages (Log *mt, Config *FC) {
 		// simulates the delay of image acquisition
 		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-		while (imgProcQueue.size()>10) {
+		while (imgProcQueue.size()>5) {
 			std::this_thread::sleep_for(1s);
 		}
 
@@ -134,6 +137,8 @@ void generatePairImages (Log *mt, Config *FC) {
 //=========================================================================================================
 
 void procFeatures (Log *mt, Config *FC) {
+
+	long int tripletSeqNum { 0 };
 
 	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
@@ -226,6 +231,9 @@ void procFeatures (Log *mt, Config *FC) {
 			////////////////////////////////////////////////////////////////////////////////////////////////////////
 			mt->stop("3. Common Points Computation - Triplets"); // measures the common points computation
 
+			tripletSeqNum++;
+			p1->setTripletSeqNum(tripletSeqNum);
+
 			// push the triplet to the thread-safe queue and send it for pose estimation
 			while (tripletsProcQueue.size() > 5) {
 				std::this_thread::sleep_for(1s);
@@ -251,11 +259,6 @@ void procFeatures (Log *mt, Config *FC) {
 
 void ProcPose (Log *mt, Config *FC) {
 
-	//std::vector<Model> vecm { };
-
-	// the main model where all the models will be superposed
-	Model m { };
-	size_t counter { 0 };
 	RNG rng(12345);
 
 	while((!mt->terminateProcFeatures)||(!tripletsProcQueue.empty())) {
@@ -362,13 +365,14 @@ void ProcPose (Log *mt, Config *FC) {
 
 
 		// The new model to add
-		Model m2 { };
+		std::shared_ptr<Model> m2(new Model {});
+		//Model m2 { };
 
 		// put the names of the images into the model
-		m2.imgNames.push_back(receivedTripletsImages->getImageName1());
-		m2.imgNames.push_back(receivedTripletsImages->getImageName2());
-		m2.imgNames.push_back(receivedTripletsImages->getImageName3());
-		m2.modelSeqNum = receivedTripletsImages->getTripletSeqNum();
+		m2->imgNames.push_back(receivedTripletsImages->getImageName1());
+		m2->imgNames.push_back(receivedTripletsImages->getImageName2());
+		m2->imgNames.push_back(receivedTripletsImages->getImageName3());
+		m2->modelSeqNum = receivedTripletsImages->getTripletSeqNum();
 
 		// the position of the center of the triplets
 		cv::Matx13f modelCenter(0, 0, 0);
@@ -397,7 +401,7 @@ void ProcPose (Log *mt, Config *FC) {
 			/*if (norm(Matx13f(f[0], f[1], f[2]) - modelCenter) > averageDistance)
 				continue;*/
 			//m2.features.push_back(ModelFeature(1000 * Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
-			m2.features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
+			m2->features.push_back(ModelFeature(Matx13f(f[0], f[1], f[2]), modelColor));  //RGB888(255,255, counter * 0x40)
 		}
 
 		// copies to camera positions vector the positions of the spheres
@@ -406,70 +410,105 @@ void ProcPose (Log *mt, Config *FC) {
 			// m2, i.e. the new model of the triplet contains the positions of the camera where the first position is (0,0,0)
 			// and the rotation matrices, the first rotation matrix is eye(3,3), the second sv_r_liste[0], i.e. r12, and the third sv_r_liste[1], i.e. r23
 			if (i==0) {
-				m2.viewPoints.push_back(ModelViewPoint(cv::Matx13f::zeros(), cv::Matx33f::eye(), cv::Matx33f::eye()));
+				m2->viewPoints.push_back(ModelViewPoint(cv::Matx13f::zeros(), cv::Matx33f::eye(), cv::Matx33f::eye()));
 			} else if (i > 0) {
 				Mat_33<double> & m1 = sv_r_liste[i - 1];
 				Points<double> f = positions[i];
 				// the relative rotation of the camera position with respect to the previous camera position
 				cv::Matx33d mat1 { m1[0][0], m1[0][1], m1[0][2], m1[1][0], m1[1][1], m1[1][2], m1[2][0], m1[2][1], m1[2][2] };
 				// the absolute rotation of the camera position with respect to the first camera position of the triplet
-				cv::Matx33d mat2 = (m2.viewPoints[i-1].rotationAbsolute) * mat1.t();
-				m2.viewPoints.push_back(ModelViewPoint(cv::Matx13d(f[0], f[1], f[2]), mat1, mat2));
+				cv::Matx33d mat2 = (m2->viewPoints[i-1].rotationAbsolute) * mat1.t();
+				m2->viewPoints.push_back(ModelViewPoint(cv::Matx13d(f[0], f[1], f[2]), mat1, mat2));
 			}
 		}
 
-		/*// writes the estimated triplet model
-		std::string plyFileName { "./resources/models_est_" + std::to_string(counter) + ".ply" };
-		writePly(plyFileName, m2.features);*/
-
-		//-----------------------------------------------------
-		fusionModel2(&m, &m2, 2);
-		//-----------------------------------------------------
-
-		//==========================================================================================
-		// output in a file of the absolute rotation and translation matrices
-		FC->write_7_odometry (m);
-		//==========================================================================================
-
-		//==========================================================================================
-		// output in a file of the progressively merged models
-		FC->write_8_progressiveModel(m);
-		//==========================================================================================
-
-		//std::string fusionFileName { "./resources/models_fusion_" + std::to_string(counter) + ".ply" };
-		//writePly(fusionFileName, m.features);
-
-		counter++;
+		modelQueue.push(m2);
 	}
+
+	// signals the end of pose estimation
+	mt->terminateProcPose--;
+}
+
+
+void FusionModel (Log *mt, Config *FC) {
+
+	// the main model where all the models will be superposed
+	Model m { };
+	m.modelSeqNum = 0;
+	std::deque<std::shared_ptr<Model>> vecModel { };
+
+	while((mt->terminateProcPose)||(!modelQueue.empty())) {
+
+		// gets the triplets from procFeatures
+		std::shared_ptr<Model> receivedModel { };
+		receivedModel = modelQueue.wait_pop();
+
+		// print message
+		std::stringstream ss { };
+		ss << "=========================" << std::endl
+		   << "Received model" << "(" << receivedModel->modelSeqNum << ")" << std::endl
+		   << "=========================" << std::endl;
+		print(ss.str());
+
+		vecModel.push_back(receivedModel);
+		std::sort(vecModel.begin(), vecModel.end(), [](std::shared_ptr<Model> x, std::shared_ptr<Model> y) { return x->modelSeqNum < y->modelSeqNum; } );
+
+		if (vecModel[0]->modelSeqNum == (m.modelSeqNum + 1))  {
+
+			mt->start("6. Fusion"); // measures the time of fusion algorithm
+			//-----------------------------------------------------
+			fusionModel2(&m, &(*vecModel[0]), 2);
+			//-----------------------------------------------------
+			mt->start("6. Fusion"); // measures the time of fusion algorithm
+
+			m.modelSeqNum++;
+			vecModel.pop_front();
+
+			//==========================================================================================
+			// output in a file of the absolute rotation and translation matrices
+			FC->write_7_odometry(m);
+			//==========================================================================================
+
+			//==========================================================================================
+			// output in a file of the progressively merged models
+			FC->write_8_progressiveModel(m);
+			//==========================================================================================
+
+		}
+	}
+
 	//==========================================================================================
 	// output in a file of the merged model
 	FC->write_9_finalModel(m);
 	//==========================================================================================
 
-
-	// signals the end of pose estimation
-	mt->terminateProcPose = true;
 }
-
 
 void RunAllPipeline (Config *FC) {
 
 	Log mt{};
 
-	mt.start("6. Total running time"); // measures the total running time
+	mt.start("7. Total running time"); // measures the total running time
 
 	// check if folders for writing the results exist
 	FC->CheckFolders();
 
 	std::thread GenPairs (generatePairImages, &mt, FC);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
-	std::thread ProcessPoseEstimation (ProcPose, &mt, FC);
+	mt.terminateProcPose = 3;
+	std::thread ProcessPoseEstimation_1 (ProcPose, &mt, FC);
+	std::thread ProcessPoseEstimation_2 (ProcPose, &mt, FC);
+	std::thread ProcessPoseEstimation_3 (ProcPose, &mt, FC);
+	std::thread ProcessFusion (FusionModel, &mt, FC);
 
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
-	ProcessPoseEstimation.join();
+	ProcessPoseEstimation_1.join();
+	ProcessPoseEstimation_2.join();
+	ProcessPoseEstimation_3.join();
+	ProcessFusion.join();
 
-	mt.stop("6. Total running time"); // measures the total running time
+	mt.stop("7. Total running time"); // measures the total running time
 
 	mt.listRunningTimes();
 
@@ -479,7 +518,7 @@ void RunUntilFilterStill (Config *FC) {
 
 	Log mt{};
 
-	mt.start("6. Total running time"); // measures the total running time
+	mt.start("7. Total running time"); // measures the total running time
 
 	// check if folders for writing the results exist
 	FC->CheckFolders();
@@ -490,7 +529,7 @@ void RunUntilFilterStill (Config *FC) {
 	GenPairs.join();
 	ProcessFeatureExtraction.join();
 
-	mt.stop("6. Total running time"); // measures the total running time
+	mt.stop("7. Total running time"); // measures the total running time
 
 	mt.listRunningTimes();
 }

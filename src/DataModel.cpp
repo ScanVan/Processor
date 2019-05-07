@@ -3,9 +3,6 @@
 #include <cmath>
 
 
-// initialize static member function
-long int TripletsWithMatches::tripletSeqNum { 0 };
-
 double PairWithMatches::computeStillDistance () {
 
 	// Keypoints of the first image

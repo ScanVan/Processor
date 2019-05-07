@@ -34,7 +34,7 @@ public:
 
 	bool terminateGenPairs = false;
 	bool terminateProcFeatures = false;
-	bool terminateProcPose = false;
+	int terminateProcPose = 0;
 
 	void start (std::string st) {
 		std::unique_lock<std::mutex> lck {mtx};

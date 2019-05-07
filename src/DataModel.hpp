@@ -16,6 +16,7 @@
 #include <opencv4/opencv2/opencv.hpp>
 #include <math.h>
 #include <numeric>
+#include <atomic>
 
 //#include "utils.hpp"
 
@@ -176,7 +177,7 @@ public:
 
 class TripletsWithMatches {
 private:
-	static long int tripletSeqNum;
+	long int tripletSeqNum {0};
 	std::shared_ptr<EquirectangularWithFeatures> imgs[3];
 	std::vector<std::vector<int>> matches {};
 	std::vector<int> freqMatches1 {};
@@ -190,11 +191,17 @@ public:
 		this->imgs[0] = img0;
 		this->imgs[1] = img1;
 		this->imgs[2] = img2;
-		tripletSeqNum++;
 	}
 	std::vector<std::vector<int>> & getMatchVector() {
 		return matches;
 	}
+	void setTripletSeqNum (const long int num) {
+		tripletSeqNum = num;
+	}
+	long int getTripletSeqNum () {
+		return tripletSeqNum;
+	}
+
 	void setFrequencyMatches1(const std::vector<int> &f) {
 		freqMatches1 = f;
 	}
@@ -239,9 +246,6 @@ public:
 	}
 	std::string idString() {
 		return "(" + imgs[0]->idString() + " " + imgs[1]->idString() + " " + imgs[2]->idString() + ")";
-	}
-	long int getTripletSeqNum() {
-		return tripletSeqNum;
 	}
 };
 

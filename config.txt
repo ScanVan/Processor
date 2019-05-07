@@ -4,10 +4,10 @@
 PATH_TO_INPUT = /media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1
 
 # Path to input mask file 
-PATH_TO_MASK = /media/mkaihara/SCANVAN10TB/model/camera_40008603-40009302/20190319-103441_SionCar1_20190506/input/1_mask/mask0_b.png
+PATH_TO_MASK = /media/mkaihara/SCANVAN10TB/model/camera_40008603-40009302/20190319-103441_SionCar1_20190507/input/1_mask/mask0_b.png
 
 # Path to the output folder where the intermediate data will be stored. A tree of sub-folders will be created.
-PATH_TO_OUTPUT = /media/mkaihara/SCANVAN10TB/model/camera_40008603-40009302/20190319-103441_SionCar1_20190506/output
+PATH_TO_OUTPUT = /media/mkaihara/SCANVAN10TB/model/camera_40008603-40009302/20190319-103441_SionCar1_20190507/output
 
 # Type of execution:
 # RUN_ALL : Runs the entire pipeline
