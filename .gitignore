@@ -40,3 +40,6 @@
 
 # Input data
 /data/
+
+# Configuration files
+config2.txt

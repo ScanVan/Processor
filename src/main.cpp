@@ -81,9 +81,16 @@ void generatePairImages (Log *mt, Config *FC) {
 	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
-	/*auto it1 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161314-343305.bmp");
-	file_list.erase(file_list.begin(), it1);
-	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");
+//	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-103913-094892.bmp");
+//	file_list.erase(file_list.begin(), it1);
+//
+//	for (auto &n : file_list) {
+//		std::cout << n << std::endl;
+//	}
+//	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+
+
+/*	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");
 	file_list.erase(it2, file_list.end());
 	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 */
@@ -453,27 +460,32 @@ void FusionModel (Log *mt, Config *FC) {
 		vecModel.push_back(receivedModel);
 		std::sort(vecModel.begin(), vecModel.end(), [](std::shared_ptr<Model> x, std::shared_ptr<Model> y) { return x->modelSeqNum < y->modelSeqNum; } );
 
-		if (vecModel[0]->modelSeqNum == (m.modelSeqNum + 1))  {
+		bool continue2check { true };
 
-			mt->start("6. Fusion"); // measures the time of fusion algorithm
-			//-----------------------------------------------------
-			fusionModel2(&m, &(*vecModel[0]), 2);
-			//-----------------------------------------------------
-			mt->start("6. Fusion"); // measures the time of fusion algorithm
+		while (!vecModel.empty() && continue2check) {
+			if (vecModel[0]->modelSeqNum == (m.modelSeqNum + 1)) {
 
-			m.modelSeqNum++;
-			vecModel.pop_front();
+				mt->start("6. Fusion"); // measures the time of fusion algorithm
+				//-----------------------------------------------------
+				fusionModel2(&m, &(*vecModel[0]), 2);
+				//-----------------------------------------------------
+				mt->start("6. Fusion"); // measures the time of fusion algorithm
 
-			//==========================================================================================
-			// output in a file of the absolute rotation and translation matrices
-			FC->write_7_odometry(m);
-			//==========================================================================================
+				m.modelSeqNum++;
+				vecModel.pop_front();
 
-			//==========================================================================================
-			// output in a file of the progressively merged models
-			FC->write_8_progressiveModel(m);
-			//==========================================================================================
+				//==========================================================================================
+				// output in a file of the absolute rotation and translation matrices
+				FC->write_7_odometry(m);
+				//==========================================================================================
 
+				//==========================================================================================
+				// output in a file of the progressively merged models
+				FC->write_8_progressiveModel(m);
+				//==========================================================================================
+			} else {
+				continue2check = false;
+			}
 		}
 	}
 
@@ -495,10 +507,11 @@ void RunAllPipeline (Config *FC) {
 
 	std::thread GenPairs (generatePairImages, &mt, FC);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
-	mt.terminateProcPose = 3;
+	mt.terminateProcPose = 4;
 	std::thread ProcessPoseEstimation_1 (ProcPose, &mt, FC);
 	std::thread ProcessPoseEstimation_2 (ProcPose, &mt, FC);
 	std::thread ProcessPoseEstimation_3 (ProcPose, &mt, FC);
+	std::thread ProcessPoseEstimation_4 (ProcPose, &mt, FC);
 	std::thread ProcessFusion (FusionModel, &mt, FC);
 
 	GenPairs.join();
@@ -506,6 +519,7 @@ void RunAllPipeline (Config *FC) {
 	ProcessPoseEstimation_1.join();
 	ProcessPoseEstimation_2.join();
 	ProcessPoseEstimation_3.join();
+	ProcessPoseEstimation_4.join();
 	ProcessFusion.join();
 
 	mt.stop("7. Total running time"); // measures the total running time
