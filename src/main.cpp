@@ -81,13 +81,13 @@ void generatePairImages (Log *mt, Config *FC) {
 	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
-//	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-103913-094892.bmp");
-//	file_list.erase(file_list.begin(), it1);
-//
-//	for (auto &n : file_list) {
-//		std::cout << n << std::endl;
-//	}
-//	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-104004-844894.bmp");
+	file_list.erase(file_list.begin(), it1);
+
+	for (auto &n : file_list) {
+		std::cout << n << std::endl;
+	}
+	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
 /*	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");
@@ -139,6 +139,7 @@ void generatePairImages (Log *mt, Config *FC) {
 
 	// signals the end of genPairs
 	mt->terminateGenPairs = true;
+	std::cout << "==> generatePairImages finished." << std::endl;
 }
 
 //=========================================================================================================
@@ -259,8 +260,23 @@ void procFeatures (Log *mt, Config *FC) {
 		}
 	}
 
+
+
+	// Queue empty objects to signal end of processing
+	std::shared_ptr<TripletsWithMatches> p1(new TripletsWithMatches { });
+	p1->setTripletSeqNum(-1);
+	tripletsProcQueue.push(p1);
+	std::shared_ptr<TripletsWithMatches> p2(new TripletsWithMatches { });
+	p2->setTripletSeqNum(-1);
+	tripletsProcQueue.push(p2);
+	std::shared_ptr<TripletsWithMatches> p3(new TripletsWithMatches { });
+	p3->setTripletSeqNum(-1);
+	tripletsProcQueue.push(p3);
+
+	std::cout << "==> procFeatures finished." << std::endl;
 	// signals the end of procFeatures
 	mt->terminateProcFeatures = true;
+
 }
 
 //========================================================================================================
@@ -269,11 +285,21 @@ void ProcPose (Log *mt, Config *FC) {
 
 	RNG rng(12345);
 
+	std::thread::id this_id = std::this_thread::get_id();
+	std::stringstream ss_thread {};
+	ss_thread << this_id;
+
+
 	while((!mt->terminateProcFeatures)||(!tripletsProcQueue.empty())) {
 
 		// gets the triplets from procFeatures
 		std::shared_ptr<TripletsWithMatches> receivedTripletsImages { };
 		receivedTripletsImages = tripletsProcQueue.wait_pop();
+
+		// If received a end of processing exit the while loop
+		if (receivedTripletsImages->getTripletSeqNum() == -1) {
+			break;
+		}
 
 		// print message
 		std::stringstream ss { };
@@ -290,7 +316,7 @@ void ProcPose (Log *mt, Config *FC) {
 		auto width = receivedTripletsImages->getImage()[0]->getOmni()->getImage().cols;
 		auto height = receivedTripletsImages->getImage()[0]->getOmni()->getImage().rows;
 
-		mt->start("4. Conversion to Spherical - Triplets"); // measures the conversion time to spherical
+		mt->start("4. Conversion to Spherical - Triplets " + ss_thread.str()); // measures the conversion time to spherical
 		// loop over the spheres
 		for (int idx { 0 }; idx < 3; ++idx) {
 
@@ -315,7 +341,7 @@ void ProcPose (Log *mt, Config *FC) {
 
 			p3d_liste.push_back(list_matches);
 		}
-		mt->stop("4. Conversion to Spherical - Triplets"); // measures the conversion time to spherical
+		mt->stop("4. Conversion to Spherical - Triplets " + ss_thread.str()); // measures the conversion time to spherical
 
 		// copy of the original vector containing the spherical coordinates
 		std::vector<Vec_Points<double>> p3d_liste_orig {p3d_liste};
@@ -340,7 +366,7 @@ void ProcPose (Log *mt, Config *FC) {
 
 		// Only compute if there are features in the vector
 		if (initialNumberFeatures!=0) {
-			mt->start("5. Pose Estimation"); // measures the time of pose estimation algorithm
+			mt->start("5. Pose Estimation " + ss_thread.str()); // measures the time of pose estimation algorithm
 
 			for (int i = 0; i < 1; ++i) {
 				numIter = pose_estimation(p3d_liste, error_max, sv_scene, positions, sv_r_liste, sv_t_liste);
@@ -350,7 +376,7 @@ void ProcPose (Log *mt, Config *FC) {
 				std::cout << "Number of iterations pose estimation : " << numIter << std::endl;
 			}
 
-			mt->stop("5. Pose Estimation"); // measures the time of pose estimation algorithm
+			mt->stop("5. Pose Estimation " + ss_thread.str()); // measures the time of pose estimation algorithm
 		}
 
 		int finalNumberFeatures = p3d_liste[0].size();
@@ -435,6 +461,13 @@ void ProcPose (Log *mt, Config *FC) {
 
 	// signals the end of pose estimation
 	mt->terminateProcPose--;
+
+	// Send a model with sequence number -1 to terminate the process
+	std::shared_ptr<Model> m(new Model { });
+	m->modelSeqNum = -1;
+	modelQueue.push(m);
+
+	std::cout << "==> ProcPose finished." << std::endl;
 }
 
 
@@ -450,6 +483,10 @@ void FusionModel (Log *mt, Config *FC) {
 		// gets the triplets from procFeatures
 		std::shared_ptr<Model> receivedModel { };
 		receivedModel = modelQueue.wait_pop();
+
+		if (receivedModel->modelSeqNum == -1) {
+			continue;
+		}
 
 		// print message
 		std::stringstream ss { };
@@ -470,7 +507,7 @@ void FusionModel (Log *mt, Config *FC) {
 				//-----------------------------------------------------
 				fusionModel2(&m, &(*vecModel[0]), 2);
 				//-----------------------------------------------------
-				mt->start("6. Fusion"); // measures the time of fusion algorithm
+				mt->stop("6. Fusion"); // measures the time of fusion algorithm
 
 				m.modelSeqNum++;
 				vecModel.pop_front();
@@ -490,6 +527,7 @@ void FusionModel (Log *mt, Config *FC) {
 		}
 	}
 
+	std::cout << "==> FusionModel finished." << std::endl;
 	//==========================================================================================
 	// output in a file of the merged model
 	FC->write_9_finalModel(m);
@@ -508,11 +546,10 @@ void RunAllPipeline (Config *FC) {
 
 	std::thread GenPairs (generatePairImages, &mt, FC);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
-	mt.terminateProcPose = 4;
+	mt.terminateProcPose = 3;
 	std::thread ProcessPoseEstimation_1 (ProcPose, &mt, FC);
 	std::thread ProcessPoseEstimation_2 (ProcPose, &mt, FC);
 	std::thread ProcessPoseEstimation_3 (ProcPose, &mt, FC);
-	std::thread ProcessPoseEstimation_4 (ProcPose, &mt, FC);
 	std::thread ProcessFusion (FusionModel, &mt, FC);
 
 	GenPairs.join();
@@ -520,7 +557,6 @@ void RunAllPipeline (Config *FC) {
 	ProcessPoseEstimation_1.join();
 	ProcessPoseEstimation_2.join();
 	ProcessPoseEstimation_3.join();
-	ProcessPoseEstimation_4.join();
 	ProcessFusion.join();
 
 	mt.stop("7. Total running time"); // measures the total running time
