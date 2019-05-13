@@ -33,6 +33,7 @@ private:
 public:
 
 	bool terminateGenPairs = false;
+	bool terminateFeatureExtraction = false;
 	bool terminateProcFeatures = false;
 	int terminateProcPose = 0;
 

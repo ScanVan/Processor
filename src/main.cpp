@@ -29,19 +29,28 @@
 #include "config.hpp"
 #include "utils.hpp"
 #include "log.hpp"
+#include "ThreadPool.h"
 
 using namespace std;
 using namespace cv;
 namespace fs = std::experimental::filesystem;
 
+// Thread pool for processing the feature extraction
+const int numberThreadsFeatureExtraction { 4 };
+ThreadPool pool_features(numberThreadsFeatureExtraction);
+
 // Thread-safe queue for communication between the generation of the images and the feature extraction
 ScanVan::thread_safe_queue<Equirectangular> imgProcQueue {};
+
+// Thread-safe queue for communication between the feature extraction and processing of features
+ScanVan::thread_safe_queue<EquirectangularWithFeatures> featureProcQueue {};
 
 // Thread-safe queue for communication between the feature extraction and pose estimation
 ScanVan::thread_safe_queue<TripletsWithMatches> tripletsProcQueue {};
 
 // Thread-safe queue for communication sending the models for fusion
 ScanVan::thread_safe_queue<Model> modelQueue {};
+
 
 //=========================================================================================================
 
@@ -81,13 +90,13 @@ void generatePairImages (Log *mt, Config *FC) {
 	std::cout << "Number of files considered: " << file_list.size() << std::endl;
 
 
-	auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-104004-844894.bmp");
+	/*auto it1 = std::find(file_list.begin(), file_list.end(), "/media/mkaihara/SCANVAN10TB/record/camera_40008603-40009302/20190319-103441_SionCar1/20190319-104004-844894.bmp");
 	file_list.erase(file_list.begin(), it1);
 
 	for (auto &n : file_list) {
 		std::cout << n << std::endl;
 	}
-	std::cout << "Number of files considered: " << file_list.size() << std::endl;
+	std::cout << "Number of files considered: " << file_list.size() << std::endl;*/
 
 
 /*	auto it2 = std::find(file_list.begin(), file_list.end(), "data_in/0_dataset/20181218-161530-093291.bmp");
@@ -120,7 +129,7 @@ void generatePairImages (Log *mt, Config *FC) {
 		// simulates the delay of image acquisition
 		//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
-		while (imgProcQueue.size()>5) {
+		while (imgProcQueue.size()>2) {
 			std::this_thread::sleep_for(1s);
 		}
 
@@ -144,12 +153,13 @@ void generatePairImages (Log *mt, Config *FC) {
 
 //=========================================================================================================
 
-void procFeatures (Log *mt, Config *FC) {
+void extractFeaturesImages (Log *mt, Config *FC) {
 
-	long int tripletSeqNum { 0 };
+	// Vector that contains the results of the feature extraction
+	std::vector< std::future<std::shared_ptr<EquirectangularWithFeatures>>> results;
 
-	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
-	std::deque<std::shared_ptr<PairWithMatches>> lp { };
+	// Queue that contains the received equirectangular images
+	std::vector<std::shared_ptr<Equirectangular>> q { };
 
 	// reads the mask to apply on the images
 	//auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
@@ -172,20 +182,66 @@ void procFeatures (Log *mt, Config *FC) {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
+		q.push_back(receivedPairImages);
 
-		mt->start("1. Feature Extraction"); // measures the feature extraction
-		////////////////////////////////////////////////////////////////////////////////////////////////////////
-		std::shared_ptr<EquirectangularWithFeatures> featuredImages = extractFeatures(receivedPairImages, mask);
-		////////////////////////////////////////////////////////////////////////////////////////////////////////
-		mt->stop("1. Feature Extraction");  // measures the feature extraction
+		if (q.size() == numberThreadsFeatureExtraction) {
+		// Reached the number of images for parallel processing
 
-		//==========================================================================================
-		// write into file the features
-		FC->write_1_features(featuredImages);
-		//==========================================================================================
+			mt->start("1. Feature Extraction"); // measures the feature extraction
+			////////////////////////////////////////////////////////////////////////////////////////////////////////
+		    for(int i = 0; i < numberThreadsFeatureExtraction; ++i) {
+		        results.emplace_back(
+		        		pool_features.enqueue([q, i, mask]{
+		        			return extractFeatures(q[i], mask);
+		        		})
+
+				);
+		    }
+		    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+		    mt->stop("1. Feature Extraction");  // measures the feature extraction
+
+		    for(auto && result: results) {
+
+		    	std::shared_ptr <EquirectangularWithFeatures> r = result.get();
+
+		    	//==========================================================================================
+				// write into file the features
+				FC->write_1_features(r);
+				//==========================================================================================
+
+				// send it for pair matching and triplets calculation
+				featureProcQueue.push(r);
+
+		    }
+
+			q.clear();
+			results.clear();
+		}
+
+	}
+
+	// signals the end of genPairs
+	mt->terminateFeatureExtraction = true;
+	std::cout << "==> Feature extraction finished." << std::endl;
+
+}
+
+
+void procFeatures (Log *mt, Config *FC) {
+
+	long int tripletSeqNum { 0 };
+
+	std::deque<std::shared_ptr<EquirectangularWithFeatures>> v { };
+	std::deque<std::shared_ptr<PairWithMatches>> lp { };
+
+	// loop over while not terminate or the queue is not empty
+	while ((!mt->terminateFeatureExtraction)||(!featureProcQueue.empty())) {
+
+		std::shared_ptr<EquirectangularWithFeatures> receivedImgWithFeatures { };
+		receivedImgWithFeatures = featureProcQueue.wait_pop();
 
 		// v is a sort of queue where the extracted features are stored
-		v.push_front(featuredImages);
+		v.push_front(receivedImgWithFeatures);
 		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
 		// and the last set of features is discarded
 		if (v.size() == 2) {
@@ -244,7 +300,7 @@ void procFeatures (Log *mt, Config *FC) {
 			p1->setTripletSeqNum(tripletSeqNum);
 
 			// push the triplet to the thread-safe queue and send it for pose estimation
-			while (tripletsProcQueue.size() > 5) {
+			while (tripletsProcQueue.size() > 2) {
 				std::this_thread::sleep_for(1s);
 			}
 
@@ -259,7 +315,6 @@ void procFeatures (Log *mt, Config *FC) {
 
 		}
 	}
-
 
 
 	// Queue empty objects to signal end of processing
@@ -545,7 +600,9 @@ void RunAllPipeline (Config *FC) {
 	FC->CheckFolders();
 
 	std::thread GenPairs (generatePairImages, &mt, FC);
+	std::thread ExtractFeatures (extractFeaturesImages, &mt, FC);
 	std::thread ProcessFeatureExtraction (procFeatures, &mt, FC);
+
 	mt.terminateProcPose = 3;
 	std::thread ProcessPoseEstimation_1 (ProcPose, &mt, FC);
 	std::thread ProcessPoseEstimation_2 (ProcPose, &mt, FC);
@@ -553,6 +610,7 @@ void RunAllPipeline (Config *FC) {
 	std::thread ProcessFusion (FusionModel, &mt, FC);
 
 	GenPairs.join();
+	ExtractFeatures.join();
 	ProcessFeatureExtraction.join();
 	ProcessPoseEstimation_1.join();
 	ProcessPoseEstimation_2.join();
