@@ -17,9 +17,9 @@
 #include <math.h>
 
 //#include "ctpl.hpp"
-#include "Queue.hpp"
 #include "DataModel.hpp"
 #include "config.hpp"
+#include "Queue.hpp"
 
 std::shared_ptr<EquirectangularWithFeatures> extractFeatures(std::shared_ptr<Equirectangular> omni, std::shared_ptr<cv::Mat> mask);
 std::shared_ptr<PairWithMatches> omniMatching (std::shared_ptr<EquirectangularWithFeatures> im1, std::shared_ptr<EquirectangularWithFeatures> im2);

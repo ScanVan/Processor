@@ -22,13 +22,14 @@
 #include <math.h>
 #include <experimental/filesystem>
 
-#include "Queue.hpp"
 #include "Estimation.hpp"
 #include "pipelineAlgo.hpp"
 #include "Cartesian2Spherical.hpp"
 #include "config.hpp"
 #include "utils.hpp"
 #include "log.hpp"
+#include "Queue.hpp"
+#include "QueueValue.hpp"
 #include "ThreadPool.h"
 
 using namespace std;
@@ -38,6 +39,9 @@ namespace fs = std::experimental::filesystem;
 // Thread pool for processing the feature extraction
 const int numberThreadsFeatureExtraction { 4 };
 ThreadPool pool_features(numberThreadsFeatureExtraction);
+
+// Thread-safe queue for enqueuing the processes for feature extraction
+ScanVan::thread_safe_queue_future<std::future<std::shared_ptr<EquirectangularWithFeatures>>> featExtProcQueue {};
 
 // Thread-safe queue for communication between the generation of the images and the feature extraction
 ScanVan::thread_safe_queue<Equirectangular> imgProcQueue {};
@@ -155,12 +159,6 @@ void generatePairImages (Log *mt, Config *FC) {
 
 void extractFeaturesImages (Log *mt, Config *FC) {
 
-	// Vector that contains the results of the feature extraction
-	std::vector< std::future<std::shared_ptr<EquirectangularWithFeatures>>> results;
-
-	// Queue that contains the received equirectangular images
-	std::vector<std::shared_ptr<Equirectangular>> q { };
-
 	// reads the mask to apply on the images
 	//auto mask = make_shared<cv::Mat>(imread(inputFolder + "/" + inputMask + "/" + inputMaskFileName, IMREAD_GRAYSCALE));
 	auto mask = make_shared<cv::Mat>(imread(FC->inputMask, IMREAD_GRAYSCALE));
@@ -182,41 +180,19 @@ void extractFeaturesImages (Log *mt, Config *FC) {
 		   << "=========================" << std::endl;
 		print (ss.str());
 
-		q.push_back(receivedPairImages);
-
-		if (q.size() == numberThreadsFeatureExtraction) {
-		// Reached the number of images for parallel processing
-
-			mt->start("1. Feature Extraction"); // measures the feature extraction
-			////////////////////////////////////////////////////////////////////////////////////////////////////////
-		    for(int i = 0; i < numberThreadsFeatureExtraction; ++i) {
-		        results.emplace_back(
-		        		pool_features.enqueue([q, i, mask]{
-		        			return extractFeatures(q[i], mask);
-		        		})
-
-				);
-		    }
-		    ////////////////////////////////////////////////////////////////////////////////////////////////////////
-		    mt->stop("1. Feature Extraction");  // measures the feature extraction
-
-		    for(auto && result: results) {
-
-		    	std::shared_ptr <EquirectangularWithFeatures> r = result.get();
-
-		    	//==========================================================================================
-				// write into file the features
-				FC->write_1_features(r);
-				//==========================================================================================
-
-				// send it for pair matching and triplets calculation
-				featureProcQueue.push(r);
-
-		    }
-
-			q.clear();
-			results.clear();
+		while (featExtProcQueue.size() > numberThreadsFeatureExtraction) {
+			// Reached the number of images for parallel processing
+			std::this_thread::sleep_for(1s);
 		}
+
+		//mt->start("1. Feature Extraction"); // measures the feature extraction
+		////////////////////////////////////////////////////////////////////////////////////////////////////////
+		auto m = pool_features.enqueue([receivedPairImages, mask] {
+			return extractFeatures(receivedPairImages, mask);
+		});
+		featExtProcQueue.push(m);
+		////////////////////////////////////////////////////////////////////////////////////////////////////////
+		//mt->stop("1. Feature Extraction");  // measures the feature extraction
 
 	}
 
@@ -235,10 +211,13 @@ void procFeatures (Log *mt, Config *FC) {
 	std::deque<std::shared_ptr<PairWithMatches>> lp { };
 
 	// loop over while not terminate or the queue is not empty
-	while ((!mt->terminateFeatureExtraction)||(!featureProcQueue.empty())) {
+	while ((!mt->terminateFeatureExtraction)||(!featExtProcQueue.empty())) {
+
+		//std::future<std::shared_ptr<EquirectangularWithFeatures>> rcv_result {};
+		auto rcvResult = featExtProcQueue.wait_pop();
 
 		std::shared_ptr<EquirectangularWithFeatures> receivedImgWithFeatures { };
-		receivedImgWithFeatures = featureProcQueue.wait_pop();
+		receivedImgWithFeatures = rcvResult.get();
 
 		// v is a sort of queue where the extracted features are stored
 		v.push_front(receivedImgWithFeatures);
