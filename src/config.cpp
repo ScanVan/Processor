@@ -141,6 +141,9 @@ void Config::CheckFolders() {
 	p2 = p1 / outputMatchesMoving;
 	PathOutputMatchesMoving = p2.string();
 
+	p2 = p1 / outputMatchesMovingIndex;
+	PathOutputMatchesMovingIndex = p2.string();
+
 	p2 = p1 / outputTriplets;
 	PathOutputTriples = p2.string();
 
@@ -181,6 +184,11 @@ void Config::CheckFolders() {
 	// folder that contains the matches when the car is moving
 	if (!fs::exists(PathOutputMatchesMoving)) {
 		fs::create_directory(PathOutputMatchesMoving);
+	}
+
+	// folder that contains the matches when the car is moving
+	if (!fs::exists(PathOutputMatchesMovingIndex)) {
+		fs::create_directory(PathOutputMatchesMovingIndex);
 	}
 
 	// folder that contains the triplets
@@ -288,6 +296,32 @@ void Config::write_2_matches_moving (const std::shared_ptr<PairWithMatches> &mat
 		// m.trainIdx is the index of the Keypoints on the second image
 		outputFileMatches << std::setprecision(15) << kp1[m.queryIdx].pt.x << " " << kp1[m.queryIdx].pt.y << " " << kp2[m.trainIdx].pt.x << " "
 				<< kp2[m.trainIdx].pt.y << std::endl;
+	}
+	outputFileMatches.close();
+
+}
+
+void Config::write_2_matches_moving_index (const std::shared_ptr<PairWithMatches> &matches) {
+// writes the matches in the output file
+
+	fs::path p1 = PathOutputMatchesMovingIndex;
+	fs::path p2 = p1 / matches->getPairImageName();
+
+	std::string pathOutputMatches = p2.string();
+	// open the file to write the matches
+	std::ofstream outputFileMatches { pathOutputMatches, std::ios::trunc };
+
+	// Keypoints of the first image
+	std::vector<cv::KeyPoint> kp1 = matches->getKeyPoints1();
+	// Keypoints of the second image
+	std::vector<cv::KeyPoint> kp2 = matches->getKeyPoints2();
+
+	// loop over the vector of matches
+	for (const auto &m : matches->getMatches()) {
+
+		// m.queryIdx is the index of the Keypoints on the first image
+		// m.trainIdx is the index of the Keypoints on the second image
+		outputFileMatches << std::setprecision(15) << m.queryIdx << " " << m.trainIdx << " " << std::endl;
 	}
 	outputFileMatches.close();
 

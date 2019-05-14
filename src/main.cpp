@@ -219,6 +219,11 @@ void procFeatures (Log *mt, Config *FC) {
 		std::shared_ptr<EquirectangularWithFeatures> receivedImgWithFeatures { };
 		receivedImgWithFeatures = rcvResult.get();
 
+		//==========================================================================================
+		// write into file the features
+		FC->write_1_features(receivedImgWithFeatures);
+		//==========================================================================================
+
 		// v is a sort of queue where the extracted features are stored
 		v.push_front(receivedImgWithFeatures);
 		// whenever two sets of features are extracted, the matches between these sets are pushed to lp
@@ -249,6 +254,11 @@ void procFeatures (Log *mt, Config *FC) {
 				//==========================================================================================
 				// write the matched features for each pair of images
 				FC->write_2_matches_moving (lp.front());
+				//==========================================================================================
+
+				//==========================================================================================
+				// write the matched features for each pair of images
+				FC->write_2_matches_moving_index(lp.front());
 				//==========================================================================================
 
 				v.pop_back();
